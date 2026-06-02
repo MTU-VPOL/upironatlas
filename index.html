@@ -1,4 +1,5 @@
 
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8" />
@@ -9,14 +10,17 @@
   <script type="module" src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.esm.js"></script>
   <script nomodule src="https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/ionic.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@ionic/core/css/ionic.bundle.css"/>
- 
+
   <!-- ViewerJS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.10.0/viewer.css"/>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/viewerjs/1.10.0/viewer.js"></script>
 
-   <!-- ArcGIS -->
+  <!-- OpenSeadragon -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
+
+  <!-- ArcGIS -->
   <link rel="stylesheet" href="https://js.arcgis.com/4.23/esri/themes/dark/main.css" />
-  <script src="https://js.arcgis.com/4.23/"></script>   
+  <script src="https://js.arcgis.com/4.23/"></script>
 
   <style>
     html, body, ion-app, ion-content, ion-split-pane, ion-menu, #viewDiv {
@@ -47,6 +51,83 @@
     .esri-popup__content img {
       cursor: pointer;
     }
+
+    ion-tab-bar {
+      --background: var(--ion-color-step-50, #f2f2f2);
+    }
+
+    /* Pulsing dot overlay for building highlights in OSD */
+    .pulsing-dot {
+      width: 20px;
+      height: 20px;
+      background-color: rgb(255, 0, 0);
+      border-radius: 50%;
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .pulsing-dot::before,
+    .pulsing-dot::after {
+      content: "";
+      display: block;
+      position: absolute;
+      top: 0; left: 0;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      z-index: -1;
+      animation: pulse-grow 1.3s ease-in-out infinite;
+    }
+    .pulsing-dot::before {
+      background: rgba(255, 0, 0, 0.6);
+      animation-delay: -0.5s;
+    }
+    .pulsing-dot::after {
+      background: rgba(255, 0, 0, 0.3);
+    }
+    @keyframes pulse-grow {
+      0%   { transform: scale(1);   opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+
+    /* End drawer (IIIF viewer) */
+    ion-menu.viewer-menu {
+      --width: 30%;
+      --min-width: 280px;
+    }
+
+    #osd-container {
+      width: 100%;
+      height: calc(100% - 56px); /* subtract toolbar height */
+      background: #111;
+    }
+
+    #osd-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #888;
+      font-size: 14px;
+      gap: 12px;
+    }
+
+    #osd-placeholder ion-icon {
+      font-size: 48px;
+      color: #444;
+    }
+
+    #viewer-meta {
+      padding: 8px 12px;
+      background: #1a1a1a;
+      color: #ccc;
+      font-size: 12px;
+      border-top: 1px solid #333;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   </style>
 </head>
 
@@ -63,7 +144,8 @@
 
   <ion-content>
     <ion-split-pane content-id="main">
-      <!-- Sidebar (Filters) -->
+
+      <!-- Left Sidebar (Filters) -->
       <ion-menu content-id="main" side="start" type="overlay" swipe-gesture="false">
         <ion-header>
           <ion-toolbar color="dark">
@@ -71,61 +153,44 @@
           </ion-toolbar>
         </ion-header>
         <ion-content id="filters">
-          <!-- Ionic Searchbar -->
+
+          <!-- Search -->
           <ion-searchbar id="searchBar" placeholder="Search people, places, and photos"></ion-searchbar>
 
+          <!-- Hidden image for ViewerJS -->
           <img id="image" src="" alt="Picture">
 
-          <ion-list>
-            <!-- Theme Selector -->
-            <ion-item>
-              <ion-label>Select a Theme</ion-label>
-              <ion-select id="theme" placeholder="Choose Theme">
-                <ion-select-option value="none">Choose Theme</ion-select-option>
-                <ion-select-option value="Fire Insurance Plans">Fire Insurance Plans</ion-select-option>
-                <ion-select-option value="Land Use">Land Use</ion-select-option>
-                <ion-select-option value="Mining Maps">Mining Maps</ion-select-option>
-                <ion-select-option value="Nautical">Nautical Charts</ion-select-option>
-                <ion-select-option value="Topographic">Topographic</ion-select-option>
-              </ion-select>
-            </ion-item>
+          <!-- Opacity Slider -->
+          <ion-item>
+            <ion-label>Overlay Opacity</ion-label>
+          </ion-item>
+          <ion-item>
+            <ion-range id="slider" min="0" max="100" value="100" pin="true" mode="ios"></ion-range>
+          </ion-item>
 
-            <!-- Year Range -->
-            <ion-item>
-              <ion-label>Year Range</ion-label>
-            </ion-item>
-            <ion-item>
-              <ion-input id="startYear" type="number" placeholder="Start Year"></ion-input>              
-              <ion-input id="endYear" type="number" placeholder="End Year"></ion-input>
-            </ion-item>
-
-            <!-- Opacity Slider -->
-            <ion-item>
-              <ion-label>Overlay Opacity</ion-label>
-            </ion-item>
-            <ion-item>
-              <ion-range id="slider" min="0" max="100" value="100" pin="true" mode="ios"></ion-range>
-            </ion-item>
-          </ion-list>
-
-         <ion-segment value="heart">
-  <ion-segment-button value="call" layout="icon-start">
-    <ion-label>Maps</ion-label>
-    <ion-icon name="map"></ion-icon>
-  </ion-segment-button>
-  <ion-segment-button value="heart" layout="icon-start">
-    <ion-label>Places</ion-label>
-    <ion-icon name="business"></ion-icon>
-  </ion-segment-button>
-  <ion-segment-button value="pin" layout="icon-start">
-    <ion-label>Photos</ion-label>
-    <ion-icon name="camera"></ion-icon>
-  </ion-segment-button>
-  <ion-segment-button value="pin" layout="icon-start">
-    <ion-label>People</ion-label>
-    <ion-icon name="people"></ion-icon>
-  </ion-segment-button>
-</ion-segment>
+          <!-- Tab Bar -->
+          <ion-tab-bar id="mainTabBar" selected-tab="maps">
+            <ion-tab-button tab="maps">
+              <ion-icon name="map"></ion-icon>
+              <ion-label>Maps</ion-label>
+              <ion-badge id="badge-maps" color="danger">0</ion-badge>
+            </ion-tab-button>
+            <ion-tab-button tab="places">
+              <ion-icon name="business"></ion-icon>
+              <ion-label>Places</ion-label>
+              <ion-badge id="badge-places" color="danger">0</ion-badge>
+            </ion-tab-button>
+            <ion-tab-button tab="photos">
+              <ion-icon name="camera"></ion-icon>
+              <ion-label>Photos</ion-label>
+              <ion-badge id="badge-photos" color="danger">0</ion-badge>
+            </ion-tab-button>
+            <ion-tab-button tab="people">
+              <ion-icon name="people"></ion-icon>
+              <ion-label>People</ion-label>
+              <ion-badge id="badge-people" color="danger">0</ion-badge>
+            </ion-tab-button>
+          </ion-tab-bar>
 
           <!-- Results -->
           <ion-list id="resultsDiv">
@@ -134,6 +199,7 @@
             </ion-item>
             <ion-list id="result-list"></ion-list>
           </ion-list>
+
         </ion-content>
       </ion-menu>
 
@@ -141,6 +207,31 @@
       <div class="ion-page" id="main">
         <div id="viewDiv"></div>
       </div>
+
+      <!-- Right Drawer (IIIF / OSD Viewer) -->
+      <ion-menu content-id="main" side="end" type="push" swipe-gesture="false"
+                menu-id="viewer-menu" class="viewer-menu" id="viewerDrawer">
+        <ion-header>
+          <ion-toolbar color="dark">
+            <ion-title id="viewer-title">Photo Viewer</ion-title>
+            <ion-buttons slot="end">
+              <ion-button id="closeViewerBtn">
+                <ion-icon slot="icon-only" name="close"></ion-icon>
+              </ion-button>
+            </ion-buttons>
+          </ion-toolbar>
+        </ion-header>
+        <ion-content>
+          <div id="osd-container">
+            <div id="osd-placeholder">
+              <ion-icon name="camera-outline"></ion-icon>
+              <span>Select a photo point on the map</span>
+            </div>
+          </div>
+          <div id="viewer-meta"></div>
+        </ion-content>
+      </ion-menu>
+
     </ion-split-pane>
   </ion-content>
 </ion-app>
@@ -152,10 +243,11 @@
     "esri/layers/FeatureLayer",
     "esri/layers/TileLayer",
     "esri/layers/WebTileLayer",
-    "esri/widgets/Home"
-  ], (Map, MapView, FeatureLayer, TileLayer, WebTileLayer, Home) => (async () => {
-    
-    const renderer = {
+    "esri/widgets/Home",
+    "esri/core/reactiveUtils"
+  ], (Map, MapView, FeatureLayer, TileLayer, WebTileLayer, Home, reactiveUtils) => (async () => {
+
+    const invisibleRenderer = {
       type: "simple",
       symbol: {
         type: "simple-fill",
@@ -164,17 +256,73 @@
       }
     };
 
-    const layer = new FeatureLayer({
+    const fpRenderer = {
+      type: "simple",
+      symbol: {
+        type: "picture-marker",
+        url: "marker_picture_black.svg",
+        width: "25px",
+        height: "25px"
+      }
+    };
+
+    // --- Layers ---
+
+    const indexLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/UP_Iron_Atlas_Index_Map/FeatureServer/0",
       outFields: ["*"],
-      renderer,
+      renderer: invisibleRenderer,
       maxScale: 24,
       minScale: 0
     });
 
+    const poiLayer = new FeatureLayer({
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Atlas_POIs/FeatureServer/0",
+      outFields: ["*"],
+      renderer: invisibleRenderer,
+      maxScale: 24,
+      minScale: 0
+    });
+
+    const vsLayer = new FeatureLayer({
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Range_Viewsheds/FeatureServer/0",
+      outFields: ["*"],
+      renderer: invisibleRenderer,
+      maxScale: 24,
+      minScale: 0
+    });
+
+    const fpLayer = new FeatureLayer({
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/VS_FOCAL_DEMO/FeatureServer/0",
+      outFields: ["*"],
+      renderer: fpRenderer,
+      maxScale: 24,
+      minScale: 0,
+      id: "fp"
+    });
+
+    const cdLayer = new FeatureLayer({
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Range_City_Directory_Data/FeatureServer/0",
+      outFields: ["*"],
+      renderer: invisibleRenderer,
+      maxScale: 24,
+      minScale: 0
+    });
+
+      const bldgLayer = new FeatureLayer({
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeBuildingFootprints/FeatureServer/0",
+      outFields: ["*"],     
+      maxScale: 24,
+      minScale: 0,
+      id: "bldg"
+    });
+    
+
+    // --- Map & View ---
+
     const map = new Map({
-      basemap: "streets-navigation-vector",
-      layers: [layer]
+      basemap: "satellite",
+      layers: [indexLayer, fpLayer, bldgLayer]
     });
 
     const view = new MapView({
@@ -183,7 +331,7 @@
       center: [-88.5694, 47.1211],
       zoom: 7,
       highlightOptions: {
-        color: [255,204,0],
+        color: [255, 204, 0],
         haloOpacity: 1,
         fillOpacity: 0
       }
@@ -197,144 +345,334 @@
     view.ui.add(new Home({ view }), "top-left");
     view.ui.move("zoom", "top-left");
 
-    const layerView = await view.whenLayerView(layer);
-
-    // Popup template
-    layer.popupTemplate = {
-      title: "<font color='#FC0'>{title}",
-      content: [
-        {
-          type: "media",
-          mediaInfos: [
-            { type: "image", value: { sourceURL: "https://portal1-geo.sabu.mtu.edu/images/historic_images/{filename}.jpg" } }
-          ]
-        },
-        {
-          type: "fields",
-          fieldInfos: [
-            { fieldName: "datapub", label: "Date" },
-            { fieldName: "publisher", label: "Publisher" },
-            { fieldName: "filename", label: "File Name" },
-            { fieldName: "digHold", label: "File Path" },
-            { fieldName: "theme", label: "Theme" },
-            { fieldName: "scale", label: "Scale" },
-            { fieldName: "source", label: "Source" },
-            { fieldName: "title", label: "Title" },
-            { fieldName: "portalUrl", label: "PortalUrl" },
-            { fieldName: "resolution", label: "Resolution (dpi)" }
-          ]
-        }
-      ]
+    fpLayer.popupTemplate = {
+      title: "photopoint",
+      content: "Description"
     };
 
-    let graphics = [];
-    let currentLayer = null;
+    bldgLayer.popupTemplate = {
+      title: "photopoint",
+      content: "Description"
+    };
 
-    async function getIonicValue(id) {
-  const el = document.getElementById(id);
-  await el.componentOnReady?.(); // wait for ion component init
-  return el.value;
-}
+    vsLayer.definitionExpression = "img_id = '0000000000000000000000000000'";
 
-async function filterItems(initial = false) {
-  const searchVal = (await getIonicValue("searchBar")) || "";
-  const themeVal = (await getIonicValue("theme")) || "none";
-  const startYearVal = (await getIonicValue("startYear")) || "";
-  const endYearVal = (await getIonicValue("endYear")) || "";
+    const indexLayerView = await view.whenLayerView(indexLayer);
 
-  let searchStrings = [];
-  if (searchVal) {
-    searchStrings.push("(Upper(title) LIKE '%" + searchVal.toUpperCase() + 
-      "%' OR Upper(tags) LIKE '%" + searchVal.toUpperCase() + 
-      "%' OR datapub LIKE '%" + searchVal + "%')");
-  }
-  if (themeVal !== "none") {
-    searchStrings.push("theme = '" + themeVal + "'");
-  }
-  if (startYearVal && endYearVal) {
-    searchStrings.push("datapub BETWEEN '" + startYearVal + "' AND '" + endYearVal + "'");
-  }
+    let currentOverlayLayer = null;
+    let activeSegment = "maps";
 
-  let query = layer.createQuery();
-  query.returnGeometry = true;
-  if (!initial) query.geometry = view.extent;
-  query.where = searchStrings.length ? searchStrings.join(" AND ") : "1=1";
+    // --- OSD Setup ---
 
-  document.getElementById("result-list").innerHTML = "";
-  document.getElementById("result-block").innerText = "Results";
+    const IIIF_BASE = "https://cchi-iif.mtu.edu/iiif/3";
 
-  const results = await layer.queryFeatures(query);
-  graphics = results.features;
+    const osdViewer = OpenSeadragon({
+      id: "osd-container",
+      prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
+      showNavigationControl: true,
+      showNavigator: true,
+      navigatorPosition: "BOTTOM_RIGHT",
+      animationTime: 0.5,
+      immediateRender: false,
+      wrapHorizontal: false,
+    });
 
-  document.getElementById("result-block").innerText = "Results (" + graphics.length + ")";
+    function openIIIFImage(imgId) {
+      // Hide placeholder once we have a real image
+      const placeholder = document.getElementById("osd-placeholder");
+      if (placeholder) placeholder.style.display = "none";
 
-  graphics.forEach((result, index) => {
-    const item = document.createElement("ion-item");
-    item.innerHTML = `<ion-label>
-        <h2>${result.attributes.title}</h2>
-        <p>${result.attributes.datapub}</p>
-      </ion-label>`;
-    item.addEventListener("click", () => resultClickHandler(result, index));
-    document.getElementById("result-list").appendChild(item);
-  });
+      const manifestUrl = `${IIIF_BASE}/${imgId}/info.json`;
 
-  const objectIds = await layer.queryObjectIds(query);
-  layerView.filter = { objectIds };
-}
+      osdViewer.open(manifestUrl);
 
-    function resultClickHandler(result, index) {
-      const popup = graphics[parseInt(index, 10)];
-      if (!popup) return;
-
-      view.popup.open({ features: [popup], location: result.geometry.centroid });
-      view.goTo({ center: result.geometry.extent }, { duration: 400 });
-
-      if (currentLayer) {
-        map.remove(currentLayer);
-        currentLayer = null;
-      }
-
-      const currentMapUrl = result.attributes.service_url;
-      if (currentMapUrl.includes("{z}") && currentMapUrl.includes("{x}") && currentMapUrl.includes("{y}")) {
-        currentLayer = new WebTileLayer({ urlTemplate: currentMapUrl });
-      } else {
-        currentLayer = new TileLayer({ url: currentMapUrl });
-      }
-
-      map.add(currentLayer);
-      map.reorder(layer, 0);
-
-      const sliderVal = document.getElementById("slider").value;
-      currentLayer.opacity = sliderVal / 100;
-
-      updateViewer();
+      // Update drawer title and meta
+      document.getElementById("viewer-title").innerText = imgId.replace(/\.[^/.]+$/, ""); // strip extension
+      document.getElementById("viewer-meta").innerText = manifestUrl;
     }
+
+    async function openViewerDrawer(imgId) {
+      const drawerEl = document.getElementById("viewerDrawer");
+      await drawerEl.componentOnReady();
+      await drawerEl.open();
+      // Small delay to let the drawer finish animating before OSD renders
+      setTimeout(() => openIIIFImage(imgId), 300);
+    }
+
+    // Close button
+    document.getElementById("closeViewerBtn").addEventListener("click", async () => {
+      const drawerEl = document.getElementById("viewerDrawer");
+      await drawerEl.close();
+    });
+
+    // --- Building footprint → OSD pulsing dot ---
+
+    const BLDG_DOT_ID = "bldg-highlight-dot";
+
+    function clearBldgHighlight() {
+      osdViewer.removeOverlay(BLDG_DOT_ID);
+    }
+
+    function highlightBldgInOSD(imgCoords) {
+      clearBldgHighlight();
+
+      const parts = imgCoords.split(",");
+      if (parts.length < 2) return;
+
+      const imageX = parseFloat(parts[0]);
+      const imageY = parseFloat(parts[1]);
+      if (isNaN(imageX) || isNaN(imageY)) return;
+
+      // OSD must have an image loaded before we can place an overlay
+      const tiledImage = osdViewer.world.getItemAt(0);
+      if (!tiledImage) return;
+
+      const viewportPoint = tiledImage.imageToViewportCoordinates(
+        new OpenSeadragon.Point(imageX, imageY)
+      );
+
+      const dot = document.createElement("div");
+      dot.className = "pulsing-dot";
+      dot.id = BLDG_DOT_ID;
+
+      osdViewer.addOverlay({ element: dot, location: viewportPoint });
+
+      // Pan & zoom OSD to the dot with comfortable padding
+      const delta = 0.15;
+      const bounds = new OpenSeadragon.Rect(
+        viewportPoint.x - delta,
+        viewportPoint.y - delta,
+        delta * 2,
+        delta * 2
+      );
+      osdViewer.viewport.fitBounds(bounds, false);
+    }
+
+    // --- Segment config ---
+
+    const segmentConfig = {
+      maps: {
+        layer: indexLayer,
+        layerView: null,
+        titleField: "title",
+        subtitleField: "mapyear",
+        searchFields: (val) =>
+          `(Upper(title) LIKE '%${val.toUpperCase()}%' OR Upper(tags) LIKE '%${val.toUpperCase()}%' OR datapub LIKE '%${val}%')`
+      },
+      places: {
+        layer: poiLayer,
+        layerView: null,
+        titleField: "Name",
+        subtitleField: "Address",
+        searchFields: (val) =>
+          `(Upper(name) LIKE '%${val.toUpperCase()}%' OR Upper(Address) LIKE '%${val.toUpperCase()}%')`
+      },
+      photos: {
+        layer: vsLayer,
+        layerView: null,
+        titleField: "img_id",
+        subtitleField: "mapyear",
+        searchFields: (val) =>
+          `(Upper(img_id) LIKE '%${val.toUpperCase()}%')`
+      },
+      people: {
+        layer: cdLayer,
+        layerView: null,
+        titleField: "Name",
+        subtitleField: "Occupation",
+        searchFields: (val) =>
+          `(Upper(fullname) LIKE '%${val.toUpperCase()}%' OR Upper(occupation) LIKE '%${val.toUpperCase()}%' OR Upper(address) LIKE '%${val.toUpperCase()}%')`
+      }
+    };
+
+    segmentConfig.maps.layerView = indexLayerView;
+    map.addMany([poiLayer, vsLayer, cdLayer]);
+
+    const [poiLV, vsLV, cdLV] = await Promise.all([
+      view.whenLayerView(poiLayer),
+      view.whenLayerView(vsLayer),
+      view.whenLayerView(cdLayer)
+    ]);
+    segmentConfig.places.layerView = poiLV;
+    segmentConfig.photos.layerView = vsLV;
+    segmentConfig.people.layerView = cdLV;
+
+    // --- Query helpers ---
+
+    function buildWhereClause(cfg, searchVal) {
+      if (searchVal && searchVal.trim()) {
+        return cfg.searchFields(searchVal.trim());
+      }
+      return "1=1";
+    }
+
+    async function queryLayerInExtent(cfg, searchVal) {
+      const query = cfg.layer.createQuery();
+      query.returnGeometry = true;
+      query.geometry = view.extent;
+      query.where = buildWhereClause(cfg, searchVal);
+      const results = await cfg.layer.queryFeatures(query);
+      return results.features;
+    }
+
+    // --- Badges ---
+
+    async function updateAllBadges(searchVal) {
+      const tabs = ["maps", "places", "photos", "people"];
+      await Promise.all(tabs.map(async (tab) => {
+        const cfg = segmentConfig[tab];
+        try {
+          const query = cfg.layer.createQuery();
+          query.geometry = view.extent;
+          query.where = buildWhereClause(cfg, searchVal);
+          const count = await cfg.layer.queryFeatureCount(query);
+          const badge = document.getElementById(`badge-${tab}`);
+          if (badge) badge.innerText = count;
+        } catch (e) {
+          // leave badge as-is if layer unavailable
+        }
+      }));
+    }
+
+    // --- Results list ---
+
+    async function populateResults(searchVal) {
+      const cfg = segmentConfig[activeSegment];
+      const resultList = document.getElementById("result-list");
+      const resultBlock = document.getElementById("result-block");
+
+      resultList.innerHTML = "";
+      resultBlock.innerText = "Results";
+
+      let features = [];
+      try {
+        features = await queryLayerInExtent(cfg, searchVal);
+      } catch (e) {
+        resultBlock.innerText = "Results (unavailable)";
+        return;
+      }
+
+      resultBlock.innerText = `Results (${features.length})`;
+
+      if (cfg.layerView) {
+        const objectIds = features.map(f => f.attributes[cfg.layer.objectIdField] ?? f.attributes.OBJECTID);
+        cfg.layerView.filter = { objectIds };
+      }
+
+      features.forEach((feature) => {
+        const title    = feature.attributes[cfg.titleField]    ?? "(no title)";
+        const subtitle = feature.attributes[cfg.subtitleField] ?? "";
+
+        const item = document.createElement("ion-item");
+        item.innerHTML = `<ion-label>
+          <h2>${title}</h2>
+          <p>${subtitle}</p>
+        </ion-label>`;
+
+        item.addEventListener("click", () => {
+          if (activeSegment === "maps") {
+            loadMapOverlay(feature);
+          } else if (activeSegment === "photos") {
+            // Pan map to feature + open IIIF viewer
+            view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
+            vsLayer.definitionExpression = `img_id = '${feature.attributes.img_id}'`;
+            openViewerDrawer(feature.attributes.img_id);
+          } else {
+            view.goTo({ center: feature.geometry }, { duration: 400 });
+          }
+        });
+
+        resultList.appendChild(item);
+      });
+    }
+
+    // --- Full refresh ---
+
+    async function filterItems() {
+      const searchVal = document.getElementById("searchBar").value || "";
+      await Promise.all([
+        updateAllBadges(searchVal),
+        populateResults(searchVal)
+      ]);
+    }
+
+    // --- Map overlay (Maps tab) ---
+
+    function loadMapOverlay(feature) {
+      if (currentOverlayLayer) {
+        map.remove(currentOverlayLayer);
+        currentOverlayLayer = null;
+      }
+
+      const serviceUrl = feature.attributes.service_url;
+      if (!serviceUrl) return;
+
+      if (serviceUrl.includes("{z}") && serviceUrl.includes("{x}") && serviceUrl.includes("{y}")) {
+        currentOverlayLayer = new WebTileLayer({ urlTemplate: serviceUrl });
+      } else {
+        currentOverlayLayer = new TileLayer({ url: serviceUrl });
+      }
+
+      map.add(currentOverlayLayer);
+      map.reorder(indexLayer, 0);
+      currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
+    }
+
+    // --- Popup watch: fp click → viewshed + OSD viewer
+    //                  bldg click → pulsing dot in OSD ---
+
+    reactiveUtils.watch(
+      () => view.popup.selectedFeature,
+      (graphic) => {
+        if (!graphic || !graphic.layer) return;
+
+        if (graphic.layer.id === "fp") {
+          const imgId = graphic.attributes.img_id;
+          vsLayer.definitionExpression = `img_id = '${imgId}'`;
+          bldgLayer.definitionExpression = `img_id = '${imgId}'`;
+          view.goTo({ center: graphic.geometry, zoom: 16 }, { duration: 600 });
+          // Clear any previous building dot when switching photos
+          clearBldgHighlight();
+          openViewerDrawer(imgId);
+        }
+
+        if (graphic.layer.id === "bldg") {
+          const imgCoords = graphic.attributes.img_coords;
+          if (!imgCoords) return;
+
+          const imgId = graphic.attributes.img_id;
+          const drawerEl = document.getElementById("viewerDrawer");
+
+          drawerEl.componentOnReady().then(async () => {
+            const isOpen = await drawerEl.isOpen();
+            if (!isOpen) {
+              // Drawer closed — open it with the matching image, place dot once OSD finishes loading
+              vsLayer.definitionExpression = `img_id = '${imgId}'`;
+              bldgLayer.definitionExpression = `img_id = '${imgId}'`;
+              await openViewerDrawer(imgId);
+              osdViewer.addOnceHandler("open", () => highlightBldgInOSD(imgCoords));
+            } else {
+              // Drawer already open — place dot immediately
+              highlightBldgInOSD(imgCoords);
+            }
+          });
+        }
+      }
+    );
+
+    // --- ViewerJS (legacy, kept for popup image clicks) ---
+
+    const viewer = new Viewer(document.getElementById("image"), { navbar: false, toolbar: true });
 
     function updateViewer() {
       const feature = view.popup.selectedFeature;
       if (!feature) return;
-      document.getElementById("image").src = "https://portal1-geo.sabu.mtu.edu/images/historic_images/" + feature.attributes.filename + ".jpg";
+      document.getElementById("image").src =
+        "https://portal1-geo.sabu.mtu.edu/images/historic_images/" +
+        feature.attributes.filename + ".jpg";
       document.getElementById("image").alt = feature.attributes.title;
       viewer.update();
     }
-
-    const viewer = new Viewer(document.getElementById("image"), { navbar: false, toolbar: true });
-
-    // Event bindings (Ionic)
-    document.getElementById("searchBar").addEventListener("ionInput", filterItems);
-    document.getElementById("theme").addEventListener("ionChange", filterItems);
-    document.getElementById("startYear").addEventListener("ionInput", filterItems);
-    document.getElementById("endYear").addEventListener("ionInput", filterItems);
-    document.getElementById("slider").addEventListener("ionInput", (ev) => {
-      if (currentLayer) currentLayer.opacity = ev.target.value / 100;
-    });
-
-    view.watch("load", (isLoaded) => { if (isLoaded) filterItems(); });
-    view.watch("stationary", (isStationary) => { if (isStationary) filterItems(); });
-
-    // Populate sidebar on page load
-    await view.when();
-    await layer.when();  
 
     document.addEventListener("click", (e) => {
       if (e.target.closest(".esri-popup__content img")) {
@@ -343,7 +681,33 @@ async function filterItems(initial = false) {
       }
     });
 
+    // --- Event bindings ---
 
+    document.getElementById("searchBar").addEventListener("ionInput", filterItems);
+
+    document.getElementById("slider").addEventListener("ionInput", (ev) => {
+      if (currentOverlayLayer) currentOverlayLayer.opacity = ev.target.value / 100;
+    });
+
+    document.querySelectorAll("#mainTabBar ion-tab-button").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        activeSegment = btn.getAttribute("tab");
+        document.querySelectorAll("#mainTabBar ion-tab-button").forEach(b => b.removeAttribute("selected"));
+        btn.setAttribute("selected", "true");
+        const searchVal = document.getElementById("searchBar").value || "";
+        await populateResults(searchVal);
+      });
+    });
+
+    view.watch("stationary", (isStationary) => {
+      if (isStationary) filterItems();
+    });
+
+    // --- Initial load ---
+
+    await view.when();
+    await indexLayer.when();
+    filterItems();
 
   })());
 </script>

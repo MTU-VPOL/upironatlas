@@ -98,7 +98,7 @@
 
     #osd-container {
       width: 100%;
-      height: calc(100% - 56px); /* subtract toolbar height */
+      height: calc(100% - 56px);
       background: #111;
     }
 
@@ -241,11 +241,13 @@
     "esri/Map",
     "esri/views/MapView",
     "esri/layers/FeatureLayer",
+    "esri/layers/GraphicsLayer",
+    "esri/Graphic",
     "esri/layers/TileLayer",
     "esri/layers/WebTileLayer",
     "esri/widgets/Home",
     "esri/core/reactiveUtils"
-  ], (Map, MapView, FeatureLayer, TileLayer, WebTileLayer, Home, reactiveUtils) => (async () => {
+  ], (Map, MapView, FeatureLayer, GraphicsLayer, Graphic, TileLayer, WebTileLayer, Home, reactiveUtils) => (async () => {
 
     const invisibleRenderer = {
       type: "simple",
@@ -309,20 +311,23 @@
       minScale: 0
     });
 
-      const bldgLayer = new FeatureLayer({
+    const bldgLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeBuildingFootprints/FeatureServer/0",
-      outFields: ["*"],     
+      outFields: ["*"],
       maxScale: 24,
       minScale: 0,
       id: "bldg"
     });
-    
+
+    // Graphics layer for People/Places pin markers (sits above Sanborn overlay, below fp/vs/bldg)
+    const markerLayer = new GraphicsLayer({ id: "markers" });
 
     // --- Map & View ---
+    // Layer order bottom→top: indexLayer, [Sanborn overlay inserted at pos 1], markerLayer, fpLayer, vsLayer, bldgLayer
 
     const map = new Map({
       basemap: "satellite",
-      layers: [indexLayer, fpLayer, bldgLayer]
+      layers: [indexLayer, markerLayer, fpLayer, vsLayer, bldgLayer]
     });
 
     const view = new MapView({
@@ -356,6 +361,7 @@
     };
 
     vsLayer.definitionExpression = "img_id = '0000000000000000000000000000'";
+    bldgLayer.definitionExpression = "img_id = '0000000000000000000000000000'";
 
     const indexLayerView = await view.whenLayerView(indexLayer);
 
@@ -378,16 +384,11 @@
     });
 
     function openIIIFImage(imgId) {
-      // Hide placeholder once we have a real image
       const placeholder = document.getElementById("osd-placeholder");
       if (placeholder) placeholder.style.display = "none";
-
       const manifestUrl = `${IIIF_BASE}/${imgId}/info.json`;
-
       osdViewer.open(manifestUrl);
-
-      // Update drawer title and meta
-      document.getElementById("viewer-title").innerText = imgId.replace(/\.[^/.]+$/, ""); // strip extension
+      document.getElementById("viewer-title").innerText = imgId.replace(/\.[^/.]+$/, "");
       document.getElementById("viewer-meta").innerText = manifestUrl;
     }
 
@@ -395,11 +396,10 @@
       const drawerEl = document.getElementById("viewerDrawer");
       await drawerEl.componentOnReady();
       await drawerEl.open();
-      // Small delay to let the drawer finish animating before OSD renders
       setTimeout(() => openIIIFImage(imgId), 300);
     }
 
-    // Close button
+    // Close button — isOpen is a property, not a function
     document.getElementById("closeViewerBtn").addEventListener("click", async () => {
       const drawerEl = document.getElementById("viewerDrawer");
       await drawerEl.close();
@@ -423,7 +423,6 @@
       const imageY = parseFloat(parts[1]);
       if (isNaN(imageX) || isNaN(imageY)) return;
 
-      // OSD must have an image loaded before we can place an overlay
       const tiledImage = osdViewer.world.getItemAt(0);
       if (!tiledImage) return;
 
@@ -437,7 +436,6 @@
 
       osdViewer.addOverlay({ element: dot, location: viewportPoint });
 
-      // Pan & zoom OSD to the dot with comfortable padding
       const delta = 0.15;
       const bounds = new OpenSeadragon.Rect(
         viewportPoint.x - delta,
@@ -486,7 +484,8 @@
     };
 
     segmentConfig.maps.layerView = indexLayerView;
-    map.addMany([poiLayer, vsLayer, cdLayer]);
+    // poiLayer and cdLayer not in map constructor — add them now
+    map.addMany([poiLayer, cdLayer]);
 
     const [poiLV, vsLV, cdLV] = await Promise.all([
       view.whenLayerView(poiLayer),
@@ -564,21 +563,48 @@
         const subtitle = feature.attributes[cfg.subtitleField] ?? "";
 
         const item = document.createElement("ion-item");
-        item.innerHTML = `<ion-label>
-          <h2>${title}</h2>
-          <p>${subtitle}</p>
-        </ion-label>`;
+
+        if (activeSegment === "people") {
+          const address = feature.attributes.Address ?? "";
+          const dirYear = feature.attributes.dirYear ?? "";
+          item.innerHTML = `<ion-label>
+            <h2>${title}</h2>
+            <p>${subtitle}</p>
+            <p>${address}</p>
+            <p>${dirYear}</p>
+          </ion-label>`;
+        } else {
+          item.innerHTML = `<ion-label>
+            <h2>${title}</h2>
+            <p>${subtitle}</p>
+          </ion-label>`;
+        }
 
         item.addEventListener("click", () => {
           if (activeSegment === "maps") {
             loadMapOverlay(feature);
           } else if (activeSegment === "photos") {
-            // Pan map to feature + open IIIF viewer
             view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
             vsLayer.definitionExpression = `img_id = '${feature.attributes.img_id}'`;
+            bldgLayer.definitionExpression = `img_id = '${feature.attributes.img_id}'`;
             openViewerDrawer(feature.attributes.img_id);
-          } else {
-            view.goTo({ center: feature.geometry }, { duration: 400 });
+          } else if (activeSegment === "places" || activeSegment === "people") {
+            const geom = feature.geometry.type === "polygon"
+              ? feature.geometry.centroid
+              : feature.geometry;
+            // Both places and people load their corresponding Sanborn map
+            loadSanbornForMapcode(feature.attributes.mapyear);
+            markerLayer.removeAll();
+            markerLayer.add(new Graphic({
+              geometry: geom,
+              symbol: {
+                type: "simple-marker",
+                color: [255, 204, 0],
+                size: 12,
+                outline: { color: [0, 0, 0], width: 1.5 }
+              }
+            }));
+            view.goTo({ center: geom, zoom: 17 }, { duration: 400 });
           }
         });
 
@@ -596,7 +622,65 @@
       ]);
     }
 
+    // --- Load Sanborn overlay by mapcode (used by fp and poi clicks) ---
+
+    async function loadSanbornForMapcode(mapcode) {
+      console.log("[Sanborn] loadSanbornForMapcode called with:", mapcode);
+      if (!mapcode) {
+        console.warn("[Sanborn] No mapcode provided — aborting");
+        return;
+      }
+
+      const query = indexLayer.createQuery();
+      query.where = `mapcode = '${mapcode}'`;
+      query.outFields = ["service_url", "mapcode"];
+      query.returnGeometry = false;
+
+      console.log("[Sanborn] Querying indexLayer with:", query.where);
+
+      try {
+        const results = await indexLayer.queryFeatures(query);
+        console.log("[Sanborn] Query returned", results.features.length, "features");
+
+        if (!results.features.length) {
+          console.warn("[Sanborn] No matching record found for mapcode:", mapcode);
+          return;
+        }
+
+        const attrs = results.features[0].attributes;
+        console.log("[Sanborn] Matched record attributes:", attrs);
+
+        const serviceUrl = attrs.service_url;
+        if (!serviceUrl) {
+          console.warn("[Sanborn] service_url is empty for mapcode:", mapcode);
+          return;
+        }
+
+        console.log("[Sanborn] Loading service URL:", serviceUrl);
+
+        if (currentOverlayLayer) {
+          map.remove(currentOverlayLayer);
+          currentOverlayLayer = null;
+        }
+
+        if (serviceUrl.includes("{z}") && serviceUrl.includes("{x}") && serviceUrl.includes("{y}")) {
+          currentOverlayLayer = new WebTileLayer({ urlTemplate: serviceUrl });
+        } else {
+          currentOverlayLayer = new TileLayer({ url: serviceUrl });
+        }
+
+        map.add(currentOverlayLayer);
+        map.reorder(currentOverlayLayer, 1);
+        currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
+        console.log("[Sanborn] Layer added at position 1, opacity:", currentOverlayLayer.opacity);
+      } catch (e) {
+        console.error("[Sanborn] Error loading Sanborn map:", e);
+      }
+    }
+
     // --- Map overlay (Maps tab) ---
+    // Sanborn tile is inserted at position 1 so it sits above indexLayer
+    // but below markerLayer, fpLayer, vsLayer, bldgLayer
 
     function loadMapOverlay(feature) {
       if (currentOverlayLayer) {
@@ -614,7 +698,7 @@
       }
 
       map.add(currentOverlayLayer);
-      map.reorder(indexLayer, 0);
+      map.reorder(currentOverlayLayer, 1);
       currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
     }
 
@@ -628,11 +712,14 @@
 
         if (graphic.layer.id === "fp") {
           const imgId = graphic.attributes.img_id;
+          const mapcode = graphic.attributes.mapyear;
+          console.log("[fp click] img_id:", imgId, "| mapyear:", mapcode);
+          console.log("[fp click] Full attributes:", graphic.attributes);
           vsLayer.definitionExpression = `img_id = '${imgId}'`;
           bldgLayer.definitionExpression = `img_id = '${imgId}'`;
           view.goTo({ center: graphic.geometry, zoom: 16 }, { duration: 600 });
-          // Clear any previous building dot when switching photos
           clearBldgHighlight();
+          loadSanbornForMapcode(mapcode);
           openViewerDrawer(imgId);
         }
 
@@ -644,15 +731,13 @@
           const drawerEl = document.getElementById("viewerDrawer");
 
           drawerEl.componentOnReady().then(async () => {
-            const isOpen = await drawerEl.isOpen();
-            if (!isOpen) {
-              // Drawer closed — open it with the matching image, place dot once OSD finishes loading
+            // isOpen is a boolean property, not a function
+            if (!drawerEl.isOpen) {
               vsLayer.definitionExpression = `img_id = '${imgId}'`;
               bldgLayer.definitionExpression = `img_id = '${imgId}'`;
               await openViewerDrawer(imgId);
               osdViewer.addOnceHandler("open", () => highlightBldgInOSD(imgCoords));
             } else {
-              // Drawer already open — place dot immediately
               highlightBldgInOSD(imgCoords);
             }
           });

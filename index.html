@@ -90,15 +90,15 @@
       100% { transform: scale(2.2); opacity: 0; }
     }
 
-    /* End drawer (IIIF viewer) */
-    ion-menu.viewer-menu {
+    /* Right drawer */
+    #viewerDrawer {
       --width: 30%;
       --min-width: 280px;
     }
 
     #osd-container {
       width: 100%;
-      height: calc(100% - 56px);
+      height: calc(100% - 100px);
       background: #111;
     }
 
@@ -128,11 +128,54 @@
       overflow: hidden;
       text-overflow: ellipsis;
     }
+
+    /* Mine metadata panel */
+    #mine-panel {
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    #mine-panel h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 16px 0 6px;
+      border-bottom: 1px solid #333;
+      padding-bottom: 4px;
+    }
+    #mine-panel p {
+      margin: 3px 0;
+    }
+    #mine-panel a {
+      color: #4fc3f7;
+    }
+    #mine-panel table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 6px;
+      font-size: 12px;
+    }
+    #mine-panel th {
+      text-align: left;
+      color: #aaa;
+      padding: 3px 6px;
+      border-bottom: 1px solid #333;
+    }
+    #mine-panel td {
+      padding: 3px 6px;
+      border-bottom: 1px solid #222;
+    }
   </style>
 </head>
 
 <body>
 <ion-app>
+  <ion-menu-controller></ion-menu-controller>
+  <script type="module">
+    import { menuController } from "https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/index.esm.js";
+    window.ionicMenuController = menuController;
+  </script>
   <ion-header>
     <ion-toolbar>
       <ion-title>
@@ -208,31 +251,42 @@
         <div id="viewDiv"></div>
       </div>
 
-      <!-- Right Drawer (IIIF / OSD Viewer) -->
-      <ion-menu content-id="main" side="end" type="push" swipe-gesture="false"
-                menu-id="viewer-menu" class="viewer-menu" id="viewerDrawer">
-        <ion-header>
-          <ion-toolbar color="dark">
-            <ion-title id="viewer-title">Photo Viewer</ion-title>
-            <ion-buttons slot="end">
-              <ion-button id="closeViewerBtn">
-                <ion-icon slot="icon-only" name="close"></ion-icon>
-              </ion-button>
-            </ion-buttons>
-          </ion-toolbar>
-        </ion-header>
-        <ion-content>
-          <div id="osd-container">
-            <div id="osd-placeholder">
-              <ion-icon name="camera-outline"></ion-icon>
-              <span>Select a photo point on the map</span>
-            </div>
-          </div>
-          <div id="viewer-meta"></div>
-        </ion-content>
-      </ion-menu>
-
     </ion-split-pane>
+
+    <!-- Right Drawer — outside ion-split-pane so Ionic menu API works reliably -->
+    <ion-menu side="end" type="overlay" swipe-gesture="false"
+              menu-id="viewer-menu" id="viewerDrawer" content-id="main">
+      <ion-header>
+        <ion-toolbar color="dark">
+          <ion-title id="viewer-title">Photo Viewer</ion-title>
+          <ion-buttons slot="end">
+            <ion-button id="closeViewerBtn">
+              <ion-icon slot="icon-only" name="close"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <ion-content>
+        <!-- Photo / OSD mode -->
+        <div id="osd-container">
+          <div id="osd-placeholder">
+            <ion-icon name="camera-outline"></ion-icon>
+            <span>Select a photo point on the map</span>
+          </div>
+        </div>
+        <div id="viewer-meta"></div>
+
+        <!-- Mine metadata mode -->
+        <div id="mine-panel" style="display:none; padding: 12px; color: var(--ion-text-color);">
+          <div id="mine-loading" style="text-align:center; padding: 40px; color: #888;">
+            <ion-spinner name="crescent"></ion-spinner>
+            <p>Loading mine data...</p>
+          </div>
+          <div id="mine-content" style="display:none;"></div>
+        </div>
+      </ion-content>
+    </ion-menu>
+
   </ion-content>
 </ion-app>
 
@@ -319,15 +373,38 @@
       id: "bldg"
     });
 
+    const minesLayer = new FeatureLayer({
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeMinesLocations/FeatureServer/0",
+      outFields: ["site_name", "url", "dep_id"],
+      renderer: {
+        type: "simple",
+        symbol: {
+          type: "simple-marker",
+          color: [180, 60, 20],
+          size: 10,
+          outline: { color: [255, 255, 255], width: 1 }
+        }
+      },
+      id: "mines"
+    });
+
+    minesLayer.popupTemplate = {
+      title: "{site_name}",
+      content: [{
+        type: "text",
+        text: `<a href="{url}" target="_blank">{url}</a>`
+      }]
+    };
+
     // Graphics layer for People/Places pin markers (sits above Sanborn overlay, below fp/vs/bldg)
     const markerLayer = new GraphicsLayer({ id: "markers" });
 
     // --- Map & View ---
-    // Layer order bottom→top: indexLayer, [Sanborn overlay inserted at pos 1], markerLayer, fpLayer, vsLayer, bldgLayer
+    // Layer order bottom→top: indexLayer, [Sanborn overlay at pos 1], markerLayer, fpLayer, vsLayer, bldgLayer, minesLayer
 
     const map = new Map({
       basemap: "satellite",
-      layers: [indexLayer, markerLayer, fpLayer, vsLayer, bldgLayer]
+      layers: [indexLayer, markerLayer, fpLayer, vsLayer, bldgLayer, minesLayer]
     });
 
     const view = new MapView({
@@ -393,17 +470,12 @@
     }
 
     async function openViewerDrawer(imgId) {
-      const drawerEl = document.getElementById("viewerDrawer");
-      await drawerEl.componentOnReady();
-      await drawerEl.open();
+      setDrawerMode("photo");
+      await openDrawer();
       setTimeout(() => openIIIFImage(imgId), 300);
     }
 
-    // Close button — isOpen is a property, not a function
-    document.getElementById("closeViewerBtn").addEventListener("click", async () => {
-      const drawerEl = document.getElementById("viewerDrawer");
-      await drawerEl.close();
-    });
+    document.getElementById("closeViewerBtn").addEventListener("click", closeDrawer);
 
     // --- Building footprint → OSD pulsing dot ---
 
@@ -444,6 +516,119 @@
         delta * 2
       );
       osdViewer.viewport.fitBounds(bounds, false);
+    }
+
+    // --- Drawer mode switching ---
+
+    function setDrawerMode(mode) {
+      // mode: "photo" | "mine"
+      document.getElementById("osd-container").style.display = mode === "photo" ? "block" : "none";
+      document.getElementById("viewer-meta").style.display  = mode === "photo" ? "block" : "none";
+      document.getElementById("mine-panel").style.display   = mode === "mine"  ? "block" : "none";
+    }
+
+    async function openDrawer() {
+      await window.ionicMenuController.open("viewer-menu");
+    }
+
+    async function closeDrawer() {
+      await window.ionicMenuController.close("viewer-menu");
+    }
+
+    // --- Mine metadata panel ---
+
+    const USGS_BASE = "https://mrdata.usgs.gov/mrds/json";
+
+    function formatMinePanel(siteName, siteUrl, data) {
+      const p = data.properties;
+      const dep = p.deposits || {};
+      const loc = p.location || {};
+      const geo = p.geo_coordinates || {};
+      const owners = Array.isArray(p.ownership) ? p.ownership : [];
+      const materials = Array.isArray(p.material) ? p.material : [];
+      const production = Array.isArray(p.production) ? p.production : [];
+      const plss = Array.isArray(p.plss_coordinates) ? p.plss_coordinates : [];
+      const commodity = p.commodity || {};
+
+      // Ownership rows
+      const ownerRows = owners.map(o =>
+        `<tr><td>${o.owner_name ?? ""}</td><td>${o.owner_tp ?? ""}</td><td>${o.beg_yr ?? ""}${o.end_yr ? "–" + o.end_yr : ""}</td></tr>`
+      ).join("");
+
+      // Materials rows
+      const matRows = materials.map(m =>
+        `<tr><td>${m.material ?? ""}</td><td>${m.ore_gangue ?? ""}</td></tr>`
+      ).join("");
+
+      // Production rows sorted by year
+      const prodRows = production
+        .filter(r => r.yr)
+        .sort((a, b) => a.yr - b.yr)
+        .map(r => `<tr><td>${r.yr}</td><td>${Number(r.mined).toLocaleString()} ${r.units ?? ""}</td><td>${r.item ?? ""}</td></tr>`)
+        .join("");
+
+      // PLSS
+      const plssText = plss.map(p =>
+        `T${p.township ?? ""} R${p.range ?? ""}, Sec ${p.section ?? ""} ${p.sect_fract ?? ""}`
+      ).join("<br>");
+
+      return `
+        <h3>Site</h3>
+        <p><strong>${siteName}</strong></p>
+        ${siteUrl ? `<p><a href="${siteUrl}" target="_blank">Full record ↗</a></p>` : ""}
+        <p>${dep.dev_st ?? ""} &bull; ${dep.dep_tp ?? ""} &bull; ${dep.oper_tp ?? ""}</p>
+
+        <h3>Location</h3>
+        <p>${loc.county ?? ""} County, ${loc.state_prov ?? ""}</p>
+        <p>${geo.rel_pos ?? ""}</p>
+        ${plssText ? `<p>${plssText}</p>` : ""}
+
+        <h3>Years of Operation</h3>
+        <p>${dep.yr_fst_prd ?? "?"} – ${dep.yr_lst_prd ?? "?"}</p>
+        ${dep.prod_yrs ? `<p style="color:#aaa; font-size:12px;">${dep.prod_yrs}</p>` : ""}
+
+        <h3>Commodity</h3>
+        <p>${commodity.commod ?? ""} (${commodity.commod_tp ?? ""}) &bull; ${commodity.import ?? ""}</p>
+
+        <h3>Materials</h3>
+        <table>
+          <tr><th>Material</th><th>Type</th></tr>
+          ${matRows || "<tr><td colspan='2'>None recorded</td></tr>"}
+        </table>
+
+        <h3>Ownership</h3>
+        <table>
+          <tr><th>Owner/Operator</th><th>Role</th><th>Years</th></tr>
+          ${ownerRows || "<tr><td colspan='3'>None recorded</td></tr>"}
+        </table>
+
+        <h3>Production by Year</h3>
+        <table>
+          <tr><th>Year</th><th>Amount</th><th>Commodity</th></tr>
+          ${prodRows || "<tr><td colspan='3'>None recorded</td></tr>"}
+        </table>
+      `;
+    }
+
+    async function openMineDrawer(siteName, siteUrl, depId) {
+      setDrawerMode("mine");
+      document.getElementById("viewer-title").innerText = siteName ?? "Mine Details";
+      document.getElementById("mine-loading").style.display = "block";
+      document.getElementById("mine-content").style.display = "none";
+
+      await openDrawer();
+
+      try {
+        const resp = await fetch(`${USGS_BASE}/${depId}`);
+        const data = await resp.json();
+        document.getElementById("mine-content").innerHTML = formatMinePanel(siteName, siteUrl, data);
+        document.getElementById("mine-loading").style.display = "none";
+        document.getElementById("mine-content").style.display = "block";
+      } catch (e) {
+        document.getElementById("mine-loading").innerHTML =
+          `<p style="color:#f66;">Failed to load USGS data.</p>
+           ${siteUrl ? `<p><a href="${siteUrl}" target="_blank">View full record ↗</a></p>` : ""}`;
+      }
     }
 
     // --- Segment config ---
@@ -580,14 +765,43 @@
           </ion-label>`;
         }
 
-        item.addEventListener("click", () => {
+        item.addEventListener("click", async () => {
           if (activeSegment === "maps") {
             loadMapOverlay(feature);
           } else if (activeSegment === "photos") {
-            view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
-            vsLayer.definitionExpression = `img_id = '${feature.attributes.img_id}'`;
-            bldgLayer.definitionExpression = `img_id = '${feature.attributes.img_id}'`;
-            openViewerDrawer(feature.attributes.img_id);
+            const imgId   = feature.attributes.img_id;
+            const mapcode = feature.attributes.mapyear;
+
+            // Show viewshed + buildings for this photo
+            vsLayer.definitionExpression  = `img_id = '${imgId}'`;
+            bldgLayer.definitionExpression = `img_id = '${imgId}'`;
+
+            // Load corresponding Sanborn map
+            loadSanbornForMapcode(mapcode);
+
+            // Clear any stale building dot
+            clearBldgHighlight();
+
+            // Query the matching fp feature so we can highlight it and zoom to it
+            const fpQuery = fpLayer.createQuery();
+            fpQuery.where = `img_id = '${imgId}'`;
+            fpQuery.returnGeometry = true;
+            fpQuery.outFields = ["*"];
+            const fpResult = await fpLayer.queryFeatures(fpQuery);
+
+            if (fpResult.features.length) {
+              const fpFeature = fpResult.features[0];
+              // Highlight the focal point marker
+              const fpLV = await view.whenLayerView(fpLayer);
+              fpLV.highlight(fpFeature);
+              // Zoom to it
+              view.goTo({ center: fpFeature.geometry, zoom: 16 }, { duration: 600 });
+            } else {
+              // No fp match — fall back to vsLayer geometry centroid
+              view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
+            }
+
+            openViewerDrawer(imgId);
           } else if (activeSegment === "places" || activeSegment === "people") {
             const geom = feature.geometry.type === "polygon"
               ? feature.geometry.centroid
@@ -703,11 +917,12 @@
     }
 
     // --- Popup watch: fp click → viewshed + OSD viewer
-    //                  bldg click → pulsing dot in OSD ---
+    //                  bldg click → pulsing dot in OSD
+    //                  mines click → USGS metadata in drawer ---
 
     reactiveUtils.watch(
       () => view.popup.selectedFeature,
-      (graphic) => {
+      async (graphic) => {
         if (!graphic || !graphic.layer) return;
 
         if (graphic.layer.id === "fp") {
@@ -728,19 +943,23 @@
           if (!imgCoords) return;
 
           const imgId = graphic.attributes.img_id;
-          const drawerEl = document.getElementById("viewerDrawer");
+          const isOpen = await window.ionicMenuController.isOpen("viewer-menu");
 
-          drawerEl.componentOnReady().then(async () => {
-            // isOpen is a boolean property, not a function
-            if (!drawerEl.isOpen) {
-              vsLayer.definitionExpression = `img_id = '${imgId}'`;
-              bldgLayer.definitionExpression = `img_id = '${imgId}'`;
-              await openViewerDrawer(imgId);
-              osdViewer.addOnceHandler("open", () => highlightBldgInOSD(imgCoords));
-            } else {
-              highlightBldgInOSD(imgCoords);
-            }
-          });
+          if (!isOpen) {
+            vsLayer.definitionExpression  = `img_id = '${imgId}'`;
+            bldgLayer.definitionExpression = `img_id = '${imgId}'`;
+            await openViewerDrawer(imgId);
+            osdViewer.addOnceHandler("open", () => highlightBldgInOSD(imgCoords));
+          } else {
+            highlightBldgInOSD(imgCoords);
+          }
+        }
+
+        if (graphic.layer.id === "mines") {
+          const siteName = graphic.attributes.site_name;
+          const siteUrl  = graphic.attributes.url;
+          const depId    = graphic.attributes.dep_id;
+          openMineDrawer(siteName, siteUrl, depId);
         }
       }
     );

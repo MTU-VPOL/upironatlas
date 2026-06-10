@@ -96,6 +96,14 @@
       --min-width: 280px;
     }
 
+    /* Hide backdrop for right drawer so map stays interactive */
+    ion-backdrop {
+      display: none !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      visibility: hidden !important;
+    }
+
     #osd-container {
       width: 100%;
       height: calc(100% - 100px);
@@ -254,7 +262,7 @@
     </ion-split-pane>
 
     <!-- Right Drawer — outside ion-split-pane so Ionic menu API works reliably -->
-    <ion-menu side="end" type="overlay" swipe-gesture="false"
+    <ion-menu side="end" type="overlay" swipe-gesture="false" backdrop-breakpoint="1"
               menu-id="viewer-menu" id="viewerDrawer" content-id="main">
       <ion-header>
         <ion-toolbar color="dark">
@@ -390,13 +398,9 @@
 
     minesLayer.popupTemplate = {
       title: "{site_name}",
-      content: [{
-        type: "text",
-        text: `<a href="{url}" target="_blank">{url}</a>`
-      }]
+      content: [{ type: "text", text: `<a href="{url}" target="_blank">{url}</a>` }]
     };
 
-    // Graphics layer for People/Places pin markers (sits above Sanborn overlay, below fp/vs/bldg)
     const markerLayer = new GraphicsLayer({ id: "markers" });
 
     // --- Map & View ---
@@ -427,17 +431,10 @@
     view.ui.add(new Home({ view }), "top-left");
     view.ui.move("zoom", "top-left");
 
-    fpLayer.popupTemplate = {
-      title: "photopoint",
-      content: "Description"
-    };
+    fpLayer.popupTemplate  = { title: "photopoint", content: "Description" };
+    bldgLayer.popupTemplate = { title: "photopoint", content: "Description" };
 
-    bldgLayer.popupTemplate = {
-      title: "photopoint",
-      content: "Description"
-    };
-
-    vsLayer.definitionExpression = "img_id = '0000000000000000000000000000'";
+    vsLayer.definitionExpression  = "img_id = '0000000000000000000000000000'";
     bldgLayer.definitionExpression = "img_id = '0000000000000000000000000000'";
 
     const indexLayerView = await view.whenLayerView(indexLayer);
@@ -475,8 +472,6 @@
       setTimeout(() => openIIIFImage(imgId), 300);
     }
 
-    document.getElementById("closeViewerBtn").addEventListener("click", closeDrawer);
-
     // --- Building footprint → OSD pulsing dot ---
 
     const BLDG_DOT_ID = "bldg-highlight-dot";
@@ -487,44 +482,33 @@
 
     function highlightBldgInOSD(imgCoords) {
       clearBldgHighlight();
-
       const parts = imgCoords.split(",");
       if (parts.length < 2) return;
-
       const imageX = parseFloat(parts[0]);
       const imageY = parseFloat(parts[1]);
       if (isNaN(imageX) || isNaN(imageY)) return;
-
       const tiledImage = osdViewer.world.getItemAt(0);
       if (!tiledImage) return;
-
       const viewportPoint = tiledImage.imageToViewportCoordinates(
         new OpenSeadragon.Point(imageX, imageY)
       );
-
       const dot = document.createElement("div");
       dot.className = "pulsing-dot";
       dot.id = BLDG_DOT_ID;
-
       osdViewer.addOverlay({ element: dot, location: viewportPoint });
-
       const delta = 0.15;
       const bounds = new OpenSeadragon.Rect(
-        viewportPoint.x - delta,
-        viewportPoint.y - delta,
-        delta * 2,
-        delta * 2
+        viewportPoint.x - delta, viewportPoint.y - delta, delta * 2, delta * 2
       );
       osdViewer.viewport.fitBounds(bounds, false);
     }
 
-    // --- Drawer mode switching ---
+    // --- Drawer controls ---
 
     function setDrawerMode(mode) {
-      // mode: "photo" | "mine"
       document.getElementById("osd-container").style.display = mode === "photo" ? "block" : "none";
-      document.getElementById("viewer-meta").style.display  = mode === "photo" ? "block" : "none";
-      document.getElementById("mine-panel").style.display   = mode === "mine"  ? "block" : "none";
+      document.getElementById("viewer-meta").style.display   = mode === "photo" ? "block" : "none";
+      document.getElementById("mine-panel").style.display    = mode === "mine"  ? "block" : "none";
     }
 
     async function openDrawer() {
@@ -535,6 +519,20 @@
       await window.ionicMenuController.close("viewer-menu");
     }
 
+    // Prevent backdrop tap from closing the drawer — only X button should close it
+    document.getElementById("viewerDrawer").addEventListener("ionBackdropTap", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    // Disable backdrop dismiss on the menu element directly
+    const viewerDrawerEl = document.getElementById("viewerDrawer");
+    viewerDrawerEl.componentOnReady().then(() => {
+      viewerDrawerEl.backdropDismiss = false;
+    });
+
+    document.getElementById("closeViewerBtn").addEventListener("click", closeDrawer);
+
     // --- Mine metadata panel ---
 
     const USGS_BASE = "https://mrdata.usgs.gov/mrds/json";
@@ -544,30 +542,26 @@
       const dep = p.deposits || {};
       const loc = p.location || {};
       const geo = p.geo_coordinates || {};
-      const owners = Array.isArray(p.ownership) ? p.ownership : [];
-      const materials = Array.isArray(p.material) ? p.material : [];
-      const production = Array.isArray(p.production) ? p.production : [];
-      const plss = Array.isArray(p.plss_coordinates) ? p.plss_coordinates : [];
+      const owners    = Array.isArray(p.ownership)        ? p.ownership        : [];
+      const materials = Array.isArray(p.material)         ? p.material         : [];
+      const production = Array.isArray(p.production)      ? p.production       : [];
+      const plss      = Array.isArray(p.plss_coordinates) ? p.plss_coordinates : [];
       const commodity = p.commodity || {};
 
-      // Ownership rows
       const ownerRows = owners.map(o =>
         `<tr><td>${o.owner_name ?? ""}</td><td>${o.owner_tp ?? ""}</td><td>${o.beg_yr ?? ""}${o.end_yr ? "–" + o.end_yr : ""}</td></tr>`
       ).join("");
 
-      // Materials rows
       const matRows = materials.map(m =>
         `<tr><td>${m.material ?? ""}</td><td>${m.ore_gangue ?? ""}</td></tr>`
       ).join("");
 
-      // Production rows sorted by year
       const prodRows = production
         .filter(r => r.yr)
         .sort((a, b) => a.yr - b.yr)
         .map(r => `<tr><td>${r.yr}</td><td>${Number(r.mined).toLocaleString()} ${r.units ?? ""}</td><td>${r.item ?? ""}</td></tr>`)
         .join("");
 
-      // PLSS
       const plssText = plss.map(p =>
         `T${p.township ?? ""} R${p.range ?? ""}, Sec ${p.section ?? ""} ${p.sect_fract ?? ""}`
       ).join("<br>");
@@ -615,9 +609,7 @@
       document.getElementById("viewer-title").innerText = siteName ?? "Mine Details";
       document.getElementById("mine-loading").style.display = "block";
       document.getElementById("mine-content").style.display = "none";
-
       await openDrawer();
-
       try {
         const resp = await fetch(`${USGS_BASE}/${depId}`);
         const data = await resp.json();
@@ -669,7 +661,6 @@
     };
 
     segmentConfig.maps.layerView = indexLayerView;
-    // poiLayer and cdLayer not in map constructor — add them now
     map.addMany([poiLayer, cdLayer]);
 
     const [poiLV, vsLV, cdLV] = await Promise.all([
@@ -684,9 +675,7 @@
     // --- Query helpers ---
 
     function buildWhereClause(cfg, searchVal) {
-      if (searchVal && searchVal.trim()) {
-        return cfg.searchFields(searchVal.trim());
-      }
+      if (searchVal && searchVal.trim()) return cfg.searchFields(searchVal.trim());
       return "1=1";
     }
 
@@ -697,6 +686,25 @@
       query.where = buildWhereClause(cfg, searchVal);
       const results = await cfg.layer.queryFeatures(query);
       return results.features;
+    }
+
+    // --- Sort helpers ---
+
+    function sortFeatures(features, segment) {
+      if (segment === "maps") {
+        // Primary: title A-Z, secondary: mapyear descending (latest first)
+        return [...features].sort((a, b) => {
+          const titleA = (a.attributes.title ?? "").toUpperCase();
+          const titleB = (b.attributes.title ?? "").toUpperCase();
+          if (titleA < titleB) return -1;
+          if (titleA > titleB) return 1;
+          // Same title — sort by year descending
+          const yearA = parseInt(a.attributes.mapyear) || 0;
+          const yearB = parseInt(b.attributes.mapyear) || 0;
+          return yearB - yearA;
+        });
+      }
+      return features; // other tabs unsorted for now
     }
 
     // --- Badges ---
@@ -712,9 +720,7 @@
           const count = await cfg.layer.queryFeatureCount(query);
           const badge = document.getElementById(`badge-${tab}`);
           if (badge) badge.innerText = count;
-        } catch (e) {
-          // leave badge as-is if layer unavailable
-        }
+        } catch (e) { /* leave badge as-is */ }
       }));
     }
 
@@ -722,7 +728,7 @@
 
     async function populateResults(searchVal) {
       const cfg = segmentConfig[activeSegment];
-      const resultList = document.getElementById("result-list");
+      const resultList  = document.getElementById("result-list");
       const resultBlock = document.getElementById("result-block");
 
       resultList.innerHTML = "";
@@ -735,6 +741,9 @@
         resultBlock.innerText = "Results (unavailable)";
         return;
       }
+
+      // Sort before rendering
+      features = sortFeatures(features, activeSegment);
 
       resultBlock.innerText = `Results (${features.length})`;
 
@@ -771,42 +780,28 @@
           } else if (activeSegment === "photos") {
             const imgId   = feature.attributes.img_id;
             const mapcode = feature.attributes.mapyear;
-
-            // Show viewshed + buildings for this photo
-            vsLayer.definitionExpression  = `img_id = '${imgId}'`;
+            vsLayer.definitionExpression   = `img_id = '${imgId}'`;
             bldgLayer.definitionExpression = `img_id = '${imgId}'`;
-
-            // Load corresponding Sanborn map
             loadSanbornForMapcode(mapcode);
-
-            // Clear any stale building dot
             clearBldgHighlight();
-
-            // Query the matching fp feature so we can highlight it and zoom to it
             const fpQuery = fpLayer.createQuery();
             fpQuery.where = `img_id = '${imgId}'`;
             fpQuery.returnGeometry = true;
             fpQuery.outFields = ["*"];
             const fpResult = await fpLayer.queryFeatures(fpQuery);
-
             if (fpResult.features.length) {
               const fpFeature = fpResult.features[0];
-              // Highlight the focal point marker
               const fpLV = await view.whenLayerView(fpLayer);
               fpLV.highlight(fpFeature);
-              // Zoom to it
               view.goTo({ center: fpFeature.geometry, zoom: 16 }, { duration: 600 });
             } else {
-              // No fp match — fall back to vsLayer geometry centroid
               view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
             }
-
             openViewerDrawer(imgId);
           } else if (activeSegment === "places" || activeSegment === "people") {
             const geom = feature.geometry.type === "polygon"
               ? feature.geometry.centroid
               : feature.geometry;
-            // Both places and people load their corresponding Sanborn map
             loadSanbornForMapcode(feature.attributes.mapyear);
             markerLayer.removeAll();
             markerLayer.add(new Graphic({
@@ -830,95 +825,58 @@
 
     async function filterItems() {
       const searchVal = document.getElementById("searchBar").value || "";
-      await Promise.all([
-        updateAllBadges(searchVal),
-        populateResults(searchVal)
-      ]);
+      await Promise.all([updateAllBadges(searchVal), populateResults(searchVal)]);
     }
 
-    // --- Load Sanborn overlay by mapcode (used by fp and poi clicks) ---
+    // --- Load Sanborn overlay by mapcode ---
 
     async function loadSanbornForMapcode(mapcode) {
       console.log("[Sanborn] loadSanbornForMapcode called with:", mapcode);
-      if (!mapcode) {
-        console.warn("[Sanborn] No mapcode provided — aborting");
-        return;
-      }
+      if (!mapcode) { console.warn("[Sanborn] No mapcode provided — aborting"); return; }
 
       const query = indexLayer.createQuery();
       query.where = `mapcode = '${mapcode}'`;
       query.outFields = ["service_url", "mapcode"];
       query.returnGeometry = false;
 
-      console.log("[Sanborn] Querying indexLayer with:", query.where);
-
       try {
         const results = await indexLayer.queryFeatures(query);
         console.log("[Sanborn] Query returned", results.features.length, "features");
+        if (!results.features.length) { console.warn("[Sanborn] No match for mapcode:", mapcode); return; }
 
-        if (!results.features.length) {
-          console.warn("[Sanborn] No matching record found for mapcode:", mapcode);
-          return;
-        }
+        const serviceUrl = results.features[0].attributes.service_url;
+        if (!serviceUrl) { console.warn("[Sanborn] service_url empty"); return; }
 
-        const attrs = results.features[0].attributes;
-        console.log("[Sanborn] Matched record attributes:", attrs);
+        if (currentOverlayLayer) { map.remove(currentOverlayLayer); currentOverlayLayer = null; }
 
-        const serviceUrl = attrs.service_url;
-        if (!serviceUrl) {
-          console.warn("[Sanborn] service_url is empty for mapcode:", mapcode);
-          return;
-        }
-
-        console.log("[Sanborn] Loading service URL:", serviceUrl);
-
-        if (currentOverlayLayer) {
-          map.remove(currentOverlayLayer);
-          currentOverlayLayer = null;
-        }
-
-        if (serviceUrl.includes("{z}") && serviceUrl.includes("{x}") && serviceUrl.includes("{y}")) {
-          currentOverlayLayer = new WebTileLayer({ urlTemplate: serviceUrl });
-        } else {
-          currentOverlayLayer = new TileLayer({ url: serviceUrl });
-        }
+        currentOverlayLayer = serviceUrl.includes("{z}")
+          ? new WebTileLayer({ urlTemplate: serviceUrl })
+          : new TileLayer({ url: serviceUrl });
 
         map.add(currentOverlayLayer);
         map.reorder(currentOverlayLayer, 1);
         currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
-        console.log("[Sanborn] Layer added at position 1, opacity:", currentOverlayLayer.opacity);
+        console.log("[Sanborn] Layer added at position 1");
       } catch (e) {
-        console.error("[Sanborn] Error loading Sanborn map:", e);
+        console.error("[Sanborn] Error:", e);
       }
     }
 
     // --- Map overlay (Maps tab) ---
-    // Sanborn tile is inserted at position 1 so it sits above indexLayer
-    // but below markerLayer, fpLayer, vsLayer, bldgLayer
 
     function loadMapOverlay(feature) {
-      if (currentOverlayLayer) {
-        map.remove(currentOverlayLayer);
-        currentOverlayLayer = null;
-      }
-
+      if (currentOverlayLayer) { map.remove(currentOverlayLayer); currentOverlayLayer = null; }
       const serviceUrl = feature.attributes.service_url;
       if (!serviceUrl) return;
-
-      if (serviceUrl.includes("{z}") && serviceUrl.includes("{x}") && serviceUrl.includes("{y}")) {
-        currentOverlayLayer = new WebTileLayer({ urlTemplate: serviceUrl });
-      } else {
-        currentOverlayLayer = new TileLayer({ url: serviceUrl });
-      }
-
+      currentOverlayLayer = serviceUrl.includes("{z}")
+        ? new WebTileLayer({ urlTemplate: serviceUrl })
+        : new TileLayer({ url: serviceUrl });
       map.add(currentOverlayLayer);
       map.reorder(currentOverlayLayer, 1);
       currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
     }
 
-    // --- Popup watch: fp click → viewshed + OSD viewer
-    //                  bldg click → pulsing dot in OSD
-    //                  mines click → USGS metadata in drawer ---
+    // --- Popup watch ---
 
     reactiveUtils.watch(
       () => view.popup.selectedFeature,
@@ -926,11 +884,10 @@
         if (!graphic || !graphic.layer) return;
 
         if (graphic.layer.id === "fp") {
-          const imgId = graphic.attributes.img_id;
+          const imgId   = graphic.attributes.img_id;
           const mapcode = graphic.attributes.mapyear;
           console.log("[fp click] img_id:", imgId, "| mapyear:", mapcode);
-          console.log("[fp click] Full attributes:", graphic.attributes);
-          vsLayer.definitionExpression = `img_id = '${imgId}'`;
+          vsLayer.definitionExpression   = `img_id = '${imgId}'`;
           bldgLayer.definitionExpression = `img_id = '${imgId}'`;
           view.goTo({ center: graphic.geometry, zoom: 16 }, { duration: 600 });
           clearBldgHighlight();
@@ -941,12 +898,10 @@
         if (graphic.layer.id === "bldg") {
           const imgCoords = graphic.attributes.img_coords;
           if (!imgCoords) return;
-
-          const imgId = graphic.attributes.img_id;
+          const imgId  = graphic.attributes.img_id;
           const isOpen = await window.ionicMenuController.isOpen("viewer-menu");
-
           if (!isOpen) {
-            vsLayer.definitionExpression  = `img_id = '${imgId}'`;
+            vsLayer.definitionExpression   = `img_id = '${imgId}'`;
             bldgLayer.definitionExpression = `img_id = '${imgId}'`;
             await openViewerDrawer(imgId);
             osdViewer.addOnceHandler("open", () => highlightBldgInOSD(imgCoords));
@@ -956,15 +911,16 @@
         }
 
         if (graphic.layer.id === "mines") {
-          const siteName = graphic.attributes.site_name;
-          const siteUrl  = graphic.attributes.url;
-          const depId    = graphic.attributes.dep_id;
-          openMineDrawer(siteName, siteUrl, depId);
+          openMineDrawer(
+            graphic.attributes.site_name,
+            graphic.attributes.url,
+            graphic.attributes.dep_id
+          );
         }
       }
     );
 
-    // --- ViewerJS (legacy, kept for popup image clicks) ---
+    // --- ViewerJS (legacy) ---
 
     const viewer = new Viewer(document.getElementById("image"), { navbar: false, toolbar: true });
 
@@ -979,10 +935,7 @@
     }
 
     document.addEventListener("click", (e) => {
-      if (e.target.closest(".esri-popup__content img")) {
-        updateViewer();
-        viewer.show();
-      }
+      if (e.target.closest(".esri-popup__content img")) { updateViewer(); viewer.show(); }
     });
 
     // --- Event bindings ---
@@ -1003,9 +956,7 @@
       });
     });
 
-    view.watch("stationary", (isStationary) => {
-      if (isStationary) filterItems();
-    });
+    view.watch("stationary", (isStationary) => { if (isStationary) filterItems(); });
 
     // --- Initial load ---
 

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -90,23 +89,63 @@
       100% { transform: scale(2.2); opacity: 0; }
     }
 
-    /* Right drawer */
+    /* Right drawer — plain div, Ionic dark menu aesthetic */
     #viewerDrawer {
-      --width: 30%;
-      --min-width: 280px;
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 30%;
+      min-width: 280px;
+      height: calc(100% - 56px);
+      margin-top: 56px;
+      background: var(--ion-background-color, #1e1e1e);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      z-index: 999;
+      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+      border-left: 1px solid rgba(255,255,255,0.07);
+    }
+    #viewerDrawer.open {
+      transform: translateX(0);
+    }
+    #viewer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      min-height: 56px;
+      padding: 0 8px 0 16px;
+      background: var(--ion-color-dark, #222428);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      flex-shrink: 0;
+    }
+    #viewer-header ion-title {
+      padding: 0;
+      font-size: 17px;
+      font-weight: 600;
+      color: #ffffff;
+      flex: 1;
+    }
+    #viewer-body {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      background: var(--ion-background-color, #1e1e1e);
     }
 
-    /* Hide backdrop for right drawer so map stays interactive */
+    /* Hide backdrop — not needed with plain div approach */
     ion-backdrop {
       display: none !important;
-      opacity: 0 !important;
       pointer-events: none !important;
-      visibility: hidden !important;
     }
 
     #osd-container {
       width: 100%;
-      height: calc(100% - 100px);
+      flex: 1;
+      min-height: 300px;
       background: #111;
     }
 
@@ -179,11 +218,7 @@
 
 <body>
 <ion-app>
-  <ion-menu-controller></ion-menu-controller>
-  <script type="module">
-    import { menuController } from "https://cdn.jsdelivr.net/npm/@ionic/core/dist/ionic/index.esm.js";
-    window.ionicMenuController = menuController;
-  </script>
+
   <ion-header>
     <ion-toolbar>
       <ion-title>
@@ -261,21 +296,15 @@
 
     </ion-split-pane>
 
-    <!-- Right Drawer — outside ion-split-pane so Ionic menu API works reliably -->
-    <ion-menu side="end" type="overlay" swipe-gesture="false" backdrop-breakpoint="1"
-              menu-id="viewer-menu" id="viewerDrawer" content-id="main">
-      <ion-header>
-        <ion-toolbar color="dark">
-          <ion-title id="viewer-title">Photo Viewer</ion-title>
-          <ion-buttons slot="end">
-            <ion-button id="closeViewerBtn">
-              <ion-icon slot="icon-only" name="close"></ion-icon>
-            </ion-button>
-          </ion-buttons>
-        </ion-toolbar>
-      </ion-header>
-      <ion-content>
-        <!-- Photo / OSD mode -->
+    <!-- Right Drawer — plain div styled to match Ionic dark menu -->
+    <div id="viewerDrawer">
+      <div id="viewer-header">
+        <ion-title id="viewer-title">Photo Viewer</ion-title>
+        <ion-button fill="clear" id="closeViewerBtn" color="light">
+          <ion-icon slot="icon-only" name="close"></ion-icon>
+        </ion-button>
+      </div>
+      <div id="viewer-body">
         <div id="osd-container">
           <div id="osd-placeholder">
             <ion-icon name="camera-outline"></ion-icon>
@@ -283,17 +312,15 @@
           </div>
         </div>
         <div id="viewer-meta"></div>
-
-        <!-- Mine metadata mode -->
-        <div id="mine-panel" style="display:none; padding: 12px; color: var(--ion-text-color);">
+        <div id="mine-panel" style="display:none; padding: 12px; color: #eee;">
           <div id="mine-loading" style="text-align:center; padding: 40px; color: #888;">
             <ion-spinner name="crescent"></ion-spinner>
             <p>Loading mine data...</p>
           </div>
           <div id="mine-content" style="display:none;"></div>
         </div>
-      </ion-content>
-    </ion-menu>
+      </div>
+    </div>
 
   </ion-content>
 </ion-app>
@@ -468,7 +495,7 @@
 
     async function openViewerDrawer(imgId) {
       setDrawerMode("photo");
-      await openDrawer();
+      openDrawer();
       setTimeout(() => openIIIFImage(imgId), 300);
     }
 
@@ -511,25 +538,13 @@
       document.getElementById("mine-panel").style.display    = mode === "mine"  ? "block" : "none";
     }
 
-    async function openDrawer() {
-      await window.ionicMenuController.open("viewer-menu");
+    function openDrawer() {
+      document.getElementById("viewerDrawer").classList.add("open");
     }
 
-    async function closeDrawer() {
-      await window.ionicMenuController.close("viewer-menu");
+    function closeDrawer() {
+      document.getElementById("viewerDrawer").classList.remove("open");
     }
-
-    // Prevent backdrop tap from closing the drawer — only X button should close it
-    document.getElementById("viewerDrawer").addEventListener("ionBackdropTap", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    });
-
-    // Disable backdrop dismiss on the menu element directly
-    const viewerDrawerEl = document.getElementById("viewerDrawer");
-    viewerDrawerEl.componentOnReady().then(() => {
-      viewerDrawerEl.backdropDismiss = false;
-    });
 
     document.getElementById("closeViewerBtn").addEventListener("click", closeDrawer);
 
@@ -609,7 +624,7 @@
       document.getElementById("viewer-title").innerText = siteName ?? "Mine Details";
       document.getElementById("mine-loading").style.display = "block";
       document.getElementById("mine-content").style.display = "none";
-      await openDrawer();
+      openDrawer();
       try {
         const resp = await fetch(`${USGS_BASE}/${depId}`);
         const data = await resp.json();
@@ -899,7 +914,7 @@
           const imgCoords = graphic.attributes.img_coords;
           if (!imgCoords) return;
           const imgId  = graphic.attributes.img_id;
-          const isOpen = await window.ionicMenuController.isOpen("viewer-menu");
+          const isOpen = document.getElementById("viewerDrawer").classList.contains("open");
           if (!isOpen) {
             vsLayer.definitionExpression   = `img_id = '${imgId}'`;
             bldgLayer.definitionExpression = `img_id = '${imgId}'`;

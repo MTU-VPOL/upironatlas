@@ -22,196 +22,185 @@
   <script src="https://js.arcgis.com/4.23/"></script>
 
   <style>
+    /* ===================== BASE ===================== */
     html, body, ion-app, ion-content, ion-split-pane, ion-menu, #viewDiv {
-      height: 100%;
-      width: 100%;
-      margin: 0;
-      padding: 0;
+      height: 100%; width: 100%; margin: 0; padding: 0;
     }
 
-    ion-toolbar {
-      --background: #285756;
-      --color: white;
-    }
+    ion-toolbar { --background: #285756; --color: white; }
+    #filters { padding: 10px; }
+    #viewDiv { height: 100%; width: 100%; }
+    #image { display: none; }
+    .esri-popup__content img { cursor: pointer; }
 
-    #filters {
-      padding: 10px;
-    }
-
-    #viewDiv {
-      height: 100%;
-      width: 100%;
-    }
-
-    #image {
-      display: none;
-    }
-
-    .esri-popup__content img {
-      cursor: pointer;
-    }
-
-    ion-tab-bar {
-      --background: var(--ion-color-step-50, #f2f2f2);
-    }
-
-    /* Pulsing dot overlay for building highlights in OSD */
+    /* ===================== PULSING DOT ===================== */
     .pulsing-dot {
-      width: 20px;
-      height: 20px;
-      background-color: rgb(255, 0, 0);
-      border-radius: 50%;
-      position: absolute;
-      transform: translate(-50%, -50%);
+      width: 20px; height: 20px;
+      background-color: rgb(255,0,0);
+      border-radius: 50%; position: absolute;
+      transform: translate(-50%,-50%);
       pointer-events: none;
     }
-    .pulsing-dot::before,
-    .pulsing-dot::after {
-      content: "";
-      display: block;
-      position: absolute;
-      top: 0; left: 0;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      z-index: -1;
+    .pulsing-dot::before, .pulsing-dot::after {
+      content: ""; display: block; position: absolute;
+      top: 0; left: 0; width: 20px; height: 20px;
+      border-radius: 50%; z-index: -1;
       animation: pulse-grow 1.3s ease-in-out infinite;
     }
-    .pulsing-dot::before {
-      background: rgba(255, 0, 0, 0.6);
-      animation-delay: -0.5s;
-    }
-    .pulsing-dot::after {
-      background: rgba(255, 0, 0, 0.3);
-    }
+    .pulsing-dot::before { background: rgba(255,0,0,0.6); animation-delay: -0.5s; }
+    .pulsing-dot::after  { background: rgba(255,0,0,0.3); }
     @keyframes pulse-grow {
       0%   { transform: scale(1);   opacity: 1; }
       100% { transform: scale(2.2); opacity: 0; }
     }
 
-    /* Right drawer — plain div, Ionic dark menu aesthetic */
+    /* ===================== RIGHT DRAWER (desktop) ===================== */
     #viewerDrawer {
-      position: fixed;
-      top: 0;
-      right: 0;
-      width: 30%;
-      min-width: 280px;
-      height: calc(100% - 56px);
-      margin-top: 56px;
+      position: fixed; top: 0; right: 0;
+      width: 30%; min-width: 280px;
+      height: calc(100% - 56px); margin-top: 56px;
       background: var(--ion-background-color, #1e1e1e);
-      display: flex;
-      flex-direction: column;
+      display: flex; flex-direction: column;
       transform: translateX(100%);
-      transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
       z-index: 999;
-      box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+      box-shadow: -4px 0 20px rgba(0,0,0,0.4);
       border-left: 1px solid rgba(255,255,255,0.07);
     }
-    #viewerDrawer.open {
-      transform: translateX(0);
-    }
+    #viewerDrawer.open { transform: translateX(0); }
     #viewer-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      height: 56px;
-      min-height: 56px;
-      padding: 0 8px 0 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 56px; min-height: 56px; padding: 0 8px 0 16px;
       background: var(--ion-color-dark, #222428);
       border-bottom: 1px solid rgba(255,255,255,0.07);
       flex-shrink: 0;
     }
     #viewer-header ion-title {
-      padding: 0;
-      font-size: 17px;
-      font-weight: 600;
-      color: #ffffff;
-      flex: 1;
+      padding: 0; font-size: 17px; font-weight: 600; color: #fff; flex: 1;
     }
     #viewer-body {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+      background: var(--ion-background-color, #1e1e1e);
+    }
+    #osd-container { width: 100%; flex: 1; min-height: 300px; background: #111; }
+    #osd-placeholder {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100%; color: #888; font-size: 14px; gap: 12px;
+    }
+    #osd-placeholder ion-icon { font-size: 48px; color: #444; }
+    #viewer-meta {
+      padding: 8px 12px; background: #1a1a1a; color: #ccc; font-size: 12px;
+      border-top: 1px solid #333; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ===================== MINE PANEL ===================== */
+    .mine-panel-inner { font-size: 13px; line-height: 1.5; padding: 12px; color: #eee; }
+    .mine-panel-inner h3 {
+      font-size: 14px; font-weight: 700; color: #aaa;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px;
+    }
+    .mine-panel-inner p { margin: 3px 0; }
+    .mine-panel-inner a { color: #4fc3f7; }
+    .mine-panel-inner table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
+    .mine-panel-inner th { text-align: left; color: #aaa; padding: 3px 6px; border-bottom: 1px solid #333; }
+    .mine-panel-inner td { padding: 3px 6px; border-bottom: 1px solid #222; }
+
+    /* ===================== DESKTOP TAB BAR (in sidebar) ===================== */
+    ion-tab-bar { --background: var(--ion-color-step-50, #f2f2f2); }
+
+    /* ===================== OPACITY SLIDER OVERLAY ===================== */
+    /* On desktop: slider stays in the sidebar (its original location, no overlay needed) */
+    /* On mobile: floats under the navbar */
+    #sliderOverlay {
+      display: none; /* hidden on desktop — slider is in sidebar instead */
+    }
+
+    @media (max-width: 768px) {
+      #sliderOverlay {
+        display: flex;
+        position: fixed;
+        top: 56px;
+        left: 0; right: 0;
+        z-index: 500;
+        background: rgba(30,30,30,0.85);
+        backdrop-filter: blur(4px);
+        padding: 4px 16px;
+        align-items: center;
+        gap: 10px;
+      }
+      #sliderOverlay ion-label { color: #fff; font-size: 13px; white-space: nowrap; }
+      #sliderOverlay ion-range { flex: 1; }
+    }
+
+    /* ===================== MOBILE BOTTOM TABS ===================== */
+    #mobileTabBar {
+      display: none;
+      position: fixed; bottom: 0; left: 0; right: 0;
+      z-index: 600;
+      --background: #222428;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    /* ===================== GPS FAB (mobile only) ===================== */
+    #gpsFab {
+      display: none;
+      position: fixed;
+      bottom: 70px; /* above mobile tab bar */
+      right: 16px;
+      z-index: 700;
+    }
+
+    /* ===================== MOBILE SHEET MODAL ===================== */
+    ion-modal#sheetModal {
+      --height: 50%;
+      --border-radius: 16px 16px 0 0;
+    }
+    .sheet-modal-content {
+      display: flex; flex-direction: column; height: 100%;
+      background: var(--ion-background-color, #1e1e1e);
+    }
+    .sheet-modal-handle {
+      width: 36px; height: 4px; border-radius: 2px;
+      background: rgba(255,255,255,0.3);
+      margin: 10px auto 6px;
+      flex-shrink: 0;
+    }
+    .sheet-search {
+      padding: 0 12px 8px;
+      flex-shrink: 0;
+    }
+    .sheet-results { flex: 1; overflow-y: auto; }
+
+    /* OSD inside sheet modal */
+    #mobileOsdContainer {
+      width: 100%; flex: 1; min-height: 200px; background: #111;
+    }
+
+    /* ===================== MINE MODAL ===================== */
+    ion-modal#mineModal { --border-radius: 12px; }
+    #mineModalContent {
+      height: 100%; overflow-y: auto;
       background: var(--ion-background-color, #1e1e1e);
     }
 
-    /* Hide backdrop — not needed with plain div approach */
-    ion-backdrop {
-      display: none !important;
-      pointer-events: none !important;
-    }
+    /* ===================== RESPONSIVE BREAKPOINT ===================== */
+    @media (max-width: 768px) {
+      /* Hide desktop sidebar */
+      ion-split-pane { --side-max-width: 0; --side-min-width: 0; }
+      ion-menu[side="start"] { display: none !important; }
 
-    #osd-container {
-      width: 100%;
-      flex: 1;
-      min-height: 300px;
-      background: #111;
-    }
+      /* Hide desktop right drawer */
+      #viewerDrawer { display: none !important; }
 
-    #osd-placeholder {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #888;
-      font-size: 14px;
-      gap: 12px;
-    }
+      /* Show mobile elements */
+      #mobileTabBar { display: flex !important; }
+      #gpsFab       { display: block !important; }
 
-    #osd-placeholder ion-icon {
-      font-size: 48px;
-      color: #444;
-    }
-
-    #viewer-meta {
-      padding: 8px 12px;
-      background: #1a1a1a;
-      color: #ccc;
-      font-size: 12px;
-      border-top: 1px solid #333;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Mine metadata panel */
-    #mine-panel {
-      font-size: 13px;
-      line-height: 1.5;
-    }
-    #mine-panel h3 {
-      font-size: 14px;
-      font-weight: 700;
-      color: #aaa;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin: 16px 0 6px;
-      border-bottom: 1px solid #333;
-      padding-bottom: 4px;
-    }
-    #mine-panel p {
-      margin: 3px 0;
-    }
-    #mine-panel a {
-      color: #4fc3f7;
-    }
-    #mine-panel table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 6px;
-      font-size: 12px;
-    }
-    #mine-panel th {
-      text-align: left;
-      color: #aaa;
-      padding: 3px 6px;
-      border-bottom: 1px solid #333;
-    }
-    #mine-panel td {
-      padding: 3px 6px;
-      border-bottom: 1px solid #222;
+      /* Push map up to avoid bottom tab bar overlap */
+      #viewDiv { height: calc(100% - 56px) !important; }
     }
   </style>
 </head>
@@ -222,31 +211,31 @@
   <ion-header>
     <ion-toolbar>
       <ion-title>
-        <img src="dmilogo.png" width="60" height="60" style="vertical-align: middle;">
+        <img src="dmilogo.png" width="60" height="60" style="vertical-align:middle;">
         &nbsp; UP Iron Atlas beta
       </ion-title>
     </ion-toolbar>
   </ion-header>
 
+  <!-- Opacity slider — mobile only, floats under navbar -->
+  <div id="sliderOverlay">
+    <ion-label>Opacity</ion-label>
+    <ion-range id="sliderMobile" min="0" max="100" value="100" pin="true" mode="ios"></ion-range>
+  </div>
+
   <ion-content>
     <ion-split-pane content-id="main">
 
-      <!-- Left Sidebar (Filters) -->
+      <!-- ===== LEFT SIDEBAR (desktop only) ===== -->
       <ion-menu content-id="main" side="start" type="overlay" swipe-gesture="false">
         <ion-header>
-          <ion-toolbar color="dark">
-            <ion-title>Filters</ion-title>
-          </ion-toolbar>
+          <ion-toolbar color="dark"><ion-title>Filters</ion-title></ion-toolbar>
         </ion-header>
         <ion-content id="filters">
-
-          <!-- Search -->
           <ion-searchbar id="searchBar" placeholder="Search people, places, and photos"></ion-searchbar>
+          <img id="image" src="" alt="Picture" style="display:none;">
 
-          <!-- Hidden image for ViewerJS -->
-          <img id="image" src="" alt="Picture">
-
-          <!-- Opacity Slider -->
+          <!-- Opacity slider (desktop sidebar) -->
           <ion-item>
             <ion-label>Overlay Opacity</ion-label>
           </ion-item>
@@ -254,7 +243,7 @@
             <ion-range id="slider" min="0" max="100" value="100" pin="true" mode="ios"></ion-range>
           </ion-item>
 
-          <!-- Tab Bar -->
+          <!-- Desktop tab bar -->
           <ion-tab-bar id="mainTabBar" selected-tab="maps">
             <ion-tab-button tab="maps">
               <ion-icon name="map"></ion-icon>
@@ -278,25 +267,22 @@
             </ion-tab-button>
           </ion-tab-bar>
 
-          <!-- Results -->
+          <!-- Desktop results list -->
           <ion-list id="resultsDiv">
-            <ion-item>
-              <ion-label id="result-block">Results</ion-label>
-            </ion-item>
+            <ion-item><ion-label id="result-block">Results</ion-label></ion-item>
             <ion-list id="result-list"></ion-list>
           </ion-list>
-
         </ion-content>
       </ion-menu>
 
-      <!-- Map Content -->
+      <!-- ===== MAP ===== -->
       <div class="ion-page" id="main">
         <div id="viewDiv"></div>
       </div>
 
     </ion-split-pane>
 
-    <!-- Right Drawer — plain div styled to match Ionic dark menu -->
+    <!-- ===== RIGHT DRAWER (desktop only) ===== -->
     <div id="viewerDrawer">
       <div id="viewer-header">
         <ion-title id="viewer-title">Photo Viewer</ion-title>
@@ -312,17 +298,102 @@
           </div>
         </div>
         <div id="viewer-meta"></div>
-        <div id="mine-panel" style="display:none; padding: 12px; color: #eee;">
-          <div id="mine-loading" style="text-align:center; padding: 40px; color: #888;">
+        <div id="mine-panel-desktop" style="display:none;">
+          <div id="mine-loading-desktop" style="text-align:center;padding:40px;color:#888;">
             <ion-spinner name="crescent"></ion-spinner>
             <p>Loading mine data...</p>
           </div>
-          <div id="mine-content" style="display:none;"></div>
+          <div id="mine-content-desktop" class="mine-panel-inner" style="display:none;"></div>
         </div>
       </div>
     </div>
 
+    <!-- ===== MOBILE SHEET MODAL (Maps/Places/Photos/People) ===== -->
+    <ion-modal id="sheetModal">
+      <div class="sheet-modal-content">
+        <div class="sheet-modal-handle"></div>
+        <div class="sheet-search">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <ion-searchbar id="mobileSearchBar" placeholder="Search..." style="flex:1;"></ion-searchbar>
+            <ion-button fill="clear" color="medium" id="closeSheetBtn" style="flex-shrink:0;">
+              <ion-icon slot="icon-only" name="close-circle"></ion-icon>
+            </ion-button>
+          </div>
+          <div id="mobile-result-block" style="color:#aaa;font-size:13px;padding:0 4px 4px;">Results</div>
+        </div>
+        <div class="sheet-results">
+          <ion-list id="mobile-result-list"></ion-list>
+        </div>
+      </div>
+    </ion-modal>
+
+    <!-- ===== MOBILE PHOTO SHEET MODAL ===== -->
+    <ion-modal id="photoModal">
+      <div style="display:flex;flex-direction:column;height:100%;background:#111;">
+        <div style="display:flex;align-items:center;justify-content:flex-end;padding:4px 8px;background:#1a1a1a;flex-shrink:0;">
+          <ion-button fill="clear" color="medium" id="closePhotoModalBtn">
+            <ion-icon slot="icon-only" name="close-circle"></ion-icon>
+          </ion-button>
+        </div>
+        <div id="mobileOsdContainer" style="flex:1;min-height:200px;"></div>
+        <div id="mobile-viewer-meta" style="padding:8px 12px;background:#1a1a1a;color:#ccc;font-size:12px;border-top:1px solid #333;"></div>
+      </div>
+    </ion-modal>
+
+    <!-- ===== MOBILE MINE MODAL ===== -->
+    <ion-modal id="mineModal">
+      <ion-header>
+        <ion-toolbar color="dark">
+          <ion-title id="mine-modal-title">Mine Details</ion-title>
+          <ion-buttons slot="end">
+            <ion-button id="closeMineModalBtn">
+              <ion-icon slot="icon-only" name="close"></ion-icon>
+            </ion-button>
+          </ion-buttons>
+        </ion-toolbar>
+      </ion-header>
+      <div id="mineModalContent">
+        <div id="mine-loading-mobile" style="text-align:center;padding:40px;color:#888;">
+          <ion-spinner name="crescent"></ion-spinner>
+          <p>Loading mine data...</p>
+        </div>
+        <div id="mine-content-mobile" class="mine-panel-inner" style="display:none;"></div>
+      </div>
+    </ion-modal>
+
   </ion-content>
+
+  <!-- ===== MOBILE BOTTOM TAB BAR ===== -->
+  <ion-tab-bar id="mobileTabBar">
+    <ion-tab-button id="mob-tab-maps" tab="maps">
+      <ion-icon name="map"></ion-icon>
+      <ion-label>Maps</ion-label>
+      <ion-badge id="mob-badge-maps" color="danger">0</ion-badge>
+    </ion-tab-button>
+    <ion-tab-button id="mob-tab-places" tab="places">
+      <ion-icon name="business"></ion-icon>
+      <ion-label>Places</ion-label>
+      <ion-badge id="mob-badge-places" color="danger">0</ion-badge>
+    </ion-tab-button>
+    <ion-tab-button id="mob-tab-photos" tab="photos">
+      <ion-icon name="camera"></ion-icon>
+      <ion-label>Photos</ion-label>
+      <ion-badge id="mob-badge-photos" color="danger">0</ion-badge>
+    </ion-tab-button>
+    <ion-tab-button id="mob-tab-people" tab="people">
+      <ion-icon name="people"></ion-icon>
+      <ion-label>People</ion-label>
+      <ion-badge id="mob-badge-people" color="danger">0</ion-badge>
+    </ion-tab-button>
+  </ion-tab-bar>
+
+  <!-- ===== GPS FAB (mobile only) ===== -->
+  <div id="gpsFab">
+    <ion-fab-button id="gpsBtn" color="dark" size="small">
+      <ion-icon id="gpsIcon" name="locate-outline"></ion-icon>
+    </ion-fab-button>
+  </div>
+
 </ion-app>
 
 <script>
@@ -335,154 +406,126 @@
     "esri/layers/TileLayer",
     "esri/layers/WebTileLayer",
     "esri/widgets/Home",
+    "esri/widgets/Track",
     "esri/core/reactiveUtils"
-  ], (Map, MapView, FeatureLayer, GraphicsLayer, Graphic, TileLayer, WebTileLayer, Home, reactiveUtils) => (async () => {
+  ], (Map, MapView, FeatureLayer, GraphicsLayer, Graphic, TileLayer, WebTileLayer, Home, Track, reactiveUtils) => (async () => {
+
+    const isMobile = () => window.innerWidth <= 768;
 
     const invisibleRenderer = {
       type: "simple",
-      symbol: {
-        type: "simple-fill",
-        color: [255, 128, 0, 0],
-        outline: { width: 1, color: "black" }
-      }
+      symbol: { type: "simple-fill", color: [255,128,0,0], outline: { width: 1, color: "black" } }
     };
 
     const fpRenderer = {
       type: "simple",
-      symbol: {
-        type: "picture-marker",
-        url: "marker_picture_black.svg",
-        width: "25px",
-        height: "25px"
-      }
+      symbol: { type: "picture-marker", url: "marker_picture_black.svg", width: "25px", height: "25px" }
     };
 
     // --- Layers ---
-
     const indexLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/UP_Iron_Atlas_Index_Map/FeatureServer/0",
-      outFields: ["*"],
-      renderer: invisibleRenderer,
-      maxScale: 24,
-      minScale: 0
+      outFields: ["*"], renderer: invisibleRenderer, maxScale: 24, minScale: 0
     });
-
     const poiLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Atlas_POIs/FeatureServer/0",
-      outFields: ["*"],
-      renderer: invisibleRenderer,
-      maxScale: 24,
-      minScale: 0
+      outFields: ["*"], renderer: invisibleRenderer, maxScale: 24, minScale: 0
     });
-
     const vsLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Range_Viewsheds/FeatureServer/0",
-      outFields: ["*"],
-      renderer: invisibleRenderer,
-      maxScale: 24,
-      minScale: 0
+      outFields: ["*"], renderer: invisibleRenderer, maxScale: 24, minScale: 0
     });
-
     const fpLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/VS_FOCAL_DEMO/FeatureServer/0",
-      outFields: ["*"],
-      renderer: fpRenderer,
-      maxScale: 24,
-      minScale: 0,
-      id: "fp"
+      outFields: ["*"], renderer: fpRenderer, maxScale: 24, minScale: 0, id: "fp"
     });
-
     const cdLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Range_City_Directory_Data/FeatureServer/0",
-      outFields: ["*"],
-      renderer: invisibleRenderer,
-      maxScale: 24,
-      minScale: 0
+      outFields: ["*"], renderer: invisibleRenderer, maxScale: 24, minScale: 0
     });
-
     const bldgLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeBuildingFootprints/FeatureServer/0",
-      outFields: ["*"],
-      maxScale: 24,
-      minScale: 0,
-      id: "bldg"
+      outFields: ["*"], maxScale: 24, minScale: 0, id: "bldg"
     });
-
     const minesLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeMinesLocations/FeatureServer/0",
       outFields: ["site_name", "url", "dep_id"],
-      renderer: {
-        type: "simple",
-        symbol: {
-          type: "simple-marker",
-          color: [180, 60, 20],
-          size: 10,
-          outline: { color: [255, 255, 255], width: 1 }
-        }
-      },
+      renderer: { type: "simple", symbol: { type: "simple-marker", color: [180,60,20], size: 10, outline: { color: [255,255,255], width: 1 } } },
       id: "mines"
     });
-
     minesLayer.popupTemplate = {
       title: "{site_name}",
       content: [{ type: "text", text: `<a href="{url}" target="_blank">{url}</a>` }]
     };
-
     const markerLayer = new GraphicsLayer({ id: "markers" });
 
     // --- Map & View ---
-    // Layer order bottom→top: indexLayer, [Sanborn overlay at pos 1], markerLayer, fpLayer, vsLayer, bldgLayer, minesLayer
-
     const map = new Map({
       basemap: "satellite",
       layers: [indexLayer, markerLayer, fpLayer, vsLayer, bldgLayer, minesLayer]
     });
-
     const view = new MapView({
-      container: "viewDiv",
-      map,
-      center: [-88.5694, 47.1211],
-      zoom: 7,
-      highlightOptions: {
-        color: [255, 204, 0],
-        haloOpacity: 1,
-        fillOpacity: 0
-      }
+      container: "viewDiv", map,
+      center: [-88.5694, 47.1211], zoom: 7,
+      highlightOptions: { color: [255,204,0], haloOpacity: 1, fillOpacity: 0 }
     });
-
-    view.popup = {
-      dockEnabled: true,
-      dockOptions: { buttonEnabled: false, breakpoint: false }
-    };
-
+    // Disable ArcGIS popup on mobile — we use sheet modals instead
+    if (isMobile()) {
+      view.popup.autoOpenEnabled = false;
+    } else {
+      view.popup = { dockEnabled: true, dockOptions: { buttonEnabled: false, breakpoint: false } };
+    }
     view.ui.add(new Home({ view }), "top-left");
     view.ui.move("zoom", "top-left");
 
-    fpLayer.popupTemplate  = { title: "photopoint", content: "Description" };
-    bldgLayer.popupTemplate = { title: "photopoint", content: "Description" };
-
-    vsLayer.definitionExpression  = "img_id = '0000000000000000000000000000'";
+    fpLayer.popupTemplate   = { title: "photopoint", content: "Description" };
+    bldgLayer.popupTemplate  = { title: "photopoint", content: "Description" };
+    vsLayer.definitionExpression   = "img_id = '0000000000000000000000000000'";
     bldgLayer.definitionExpression = "img_id = '0000000000000000000000000000'";
 
-    const indexLayerView = await view.whenLayerView(indexLayer);
+    // --- GPS Track widget (mobile FAB) ---
+    const trackWidget = new Track({ view, useHeadingEnabled: false, goToLocationEnabled: false });
+    let trackActive = false;
 
-    let currentOverlayLayer = null;
-    let activeSegment = "maps";
+    document.getElementById("gpsBtn").addEventListener("click", () => {
+      if (!trackActive) {
+        trackWidget.start();
+        trackActive = true;
+        document.getElementById("gpsIcon").setAttribute("name", "locate");
+        document.getElementById("gpsBtn").setAttribute("color", "success");
+      } else {
+        trackWidget.stop();
+        trackActive = false;
+        document.getElementById("gpsIcon").setAttribute("name", "locate-outline");
+        document.getElementById("gpsBtn").setAttribute("color", "dark");
+      }
+    });
 
-    // --- OSD Setup ---
-
+    // --- OSD Setup (desktop) ---
     const IIIF_BASE = "https://cchi-iif.mtu.edu/iiif/3";
 
     const osdViewer = OpenSeadragon({
       id: "osd-container",
       prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
-      showNavigationControl: true,
-      showNavigator: true,
+      showNavigationControl: true, showNavigator: true,
       navigatorPosition: "BOTTOM_RIGHT",
-      animationTime: 0.5,
-      immediateRender: false,
-      wrapHorizontal: false,
+      animationTime: 0.5, immediateRender: false, wrapHorizontal: false
     });
+
+    // Mobile OSD (inside photo sheet modal)
+    let mobileOsdViewer = null;
+
+    function getMobileOsd() {
+      if (!mobileOsdViewer) {
+        mobileOsdViewer = OpenSeadragon({
+          id: "mobileOsdContainer",
+          prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
+          showNavigationControl: true, showNavigator: false,
+          animationTime: 0.5, immediateRender: false, wrapHorizontal: false
+        });
+      }
+      return mobileOsdViewer;
+    }
 
     function openIIIFImage(imgId) {
       const placeholder = document.getElementById("osd-placeholder");
@@ -493,188 +536,240 @@
       document.getElementById("viewer-meta").innerText = manifestUrl;
     }
 
+    function openMobileIIIFImage(imgId) {
+      const manifestUrl = `${IIIF_BASE}/${imgId}/info.json`;
+      getMobileOsd().open(manifestUrl);
+      document.getElementById("mobile-viewer-meta").innerText = manifestUrl;
+    }
+
+    // --- Desktop drawer ---
+    function openDrawer()  { document.getElementById("viewerDrawer").classList.add("open"); }
+    function closeDrawer() { document.getElementById("viewerDrawer").classList.remove("open"); }
+    document.getElementById("closeViewerBtn").addEventListener("click", closeDrawer);
+
+    function setDrawerMode(mode) {
+      document.getElementById("osd-container").style.display         = mode === "photo" ? "block" : "none";
+      document.getElementById("viewer-meta").style.display           = mode === "photo" ? "block" : "none";
+      document.getElementById("mine-panel-desktop").style.display    = mode === "mine"  ? "block" : "none";
+    }
+
     async function openViewerDrawer(imgId) {
       setDrawerMode("photo");
       openDrawer();
       setTimeout(() => openIIIFImage(imgId), 300);
     }
 
-    // --- Building footprint → OSD pulsing dot ---
+    // --- Mobile sheet modal ---
+    const sheetModal = document.getElementById("sheetModal");
+    const photoModal = document.getElementById("photoModal");
+    const mineModal  = document.getElementById("mineModal");
 
-    const BLDG_DOT_ID = "bldg-highlight-dot";
+    // Breakpoints must be set as JS arrays — HTML attribute strings cause t.sort errors
+    await sheetModal.componentOnReady();
+    sheetModal.breakpoints        = [0, 0.25, 0.5, 0.75, 1];
+    sheetModal.initialBreakpoint  = 0.5;
+    sheetModal.backdropBreakpoint = 1;
+    sheetModal.handle             = false;
 
-    function clearBldgHighlight() {
-      osdViewer.removeOverlay(BLDG_DOT_ID);
+    await photoModal.componentOnReady();
+    photoModal.breakpoints        = [0, 0.25, 0.5, 0.75, 1];
+    photoModal.initialBreakpoint  = 0.5;
+    photoModal.backdropBreakpoint = 1;
+    photoModal.handle             = false;
+
+    document.getElementById("closeMineModalBtn").addEventListener("click", () => mineModal.dismiss());
+    document.getElementById("closeSheetBtn").addEventListener("click", async () => {
+      await sheetModal.dismiss();
+      sheetOpen = false;
+      document.querySelectorAll("#mobileTabBar ion-tab-button").forEach(b => b.removeAttribute("selected"));
+    });
+    document.getElementById("closePhotoModalBtn").addEventListener("click", () => photoModal.dismiss());
+
+    let mobileActiveTab = "maps";
+    let sheetOpen = false;
+
+    // Re-present a modal that may have been previously dismissed
+    async function presentModal(modal) {
+      // ion-modal needs to be re-attached to DOM after dismiss in some Ionic versions
+      // Safest: always try dismiss first (silently), then present
+      try { await modal.dismiss(); } catch(e) {}
+      await modal.present();
     }
 
-    function highlightBldgInOSD(imgCoords) {
-      clearBldgHighlight();
+    async function openSheetWithTab(tab) {
+      mobileActiveTab = tab;
+      await populateMobileResults(document.getElementById("mobileSearchBar").value || "");
+      await presentModal(sheetModal);
+      sheetOpen = true;
+      document.querySelectorAll("#mobileTabBar ion-tab-button").forEach(b => b.removeAttribute("selected"));
+      document.getElementById(`mob-tab-${tab}`).setAttribute("selected", "true");
+    }
+
+    async function openMobilePhotoViewer(imgId) {
+      await presentModal(photoModal);
+      setTimeout(() => openMobileIIIFImage(imgId), 400);
+    }
+
+    sheetModal.addEventListener("ionModalDidDismiss", () => { sheetOpen = false; });
+
+    // Mobile tab bar clicks — toggle behavior
+    document.querySelectorAll("#mobileTabBar ion-tab-button").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const tab = btn.getAttribute("tab");
+        if (sheetOpen && mobileActiveTab === tab) {
+          await sheetModal.dismiss();
+          sheetOpen = false;
+          document.querySelectorAll("#mobileTabBar ion-tab-button").forEach(b => b.removeAttribute("selected"));
+        } else {
+          await openSheetWithTab(tab);
+        }
+      });
+    });
+
+    document.getElementById("mobileSearchBar").addEventListener("ionInput", () => {
+      populateMobileResults(document.getElementById("mobileSearchBar").value || "");
+    });
+
+    // --- Building highlight (shared) ---
+    const BLDG_DOT_ID = "bldg-highlight-dot";
+
+    function clearBldgHighlight() { osdViewer.removeOverlay(BLDG_DOT_ID); }
+
+    function highlightBldgInOSD(imgCoords, viewer = osdViewer) {
+      if (viewer === osdViewer) clearBldgHighlight();
       const parts = imgCoords.split(",");
       if (parts.length < 2) return;
       const imageX = parseFloat(parts[0]);
       const imageY = parseFloat(parts[1]);
       if (isNaN(imageX) || isNaN(imageY)) return;
-      const tiledImage = osdViewer.world.getItemAt(0);
+      const tiledImage = viewer.world.getItemAt(0);
       if (!tiledImage) return;
-      const viewportPoint = tiledImage.imageToViewportCoordinates(
-        new OpenSeadragon.Point(imageX, imageY)
-      );
+      const vp = tiledImage.imageToViewportCoordinates(new OpenSeadragon.Point(imageX, imageY));
       const dot = document.createElement("div");
       dot.className = "pulsing-dot";
       dot.id = BLDG_DOT_ID;
-      osdViewer.addOverlay({ element: dot, location: viewportPoint });
-      const delta = 0.15;
-      const bounds = new OpenSeadragon.Rect(
-        viewportPoint.x - delta, viewportPoint.y - delta, delta * 2, delta * 2
-      );
-      osdViewer.viewport.fitBounds(bounds, false);
+      viewer.addOverlay({ element: dot, location: vp });
+      const d = 0.15;
+      viewer.viewport.fitBounds(new OpenSeadragon.Rect(vp.x-d, vp.y-d, d*2, d*2), false);
     }
 
-    // --- Drawer controls ---
+    // --- Opacity slider ---
 
-    function setDrawerMode(mode) {
-      document.getElementById("osd-container").style.display = mode === "photo" ? "block" : "none";
-      document.getElementById("viewer-meta").style.display   = mode === "photo" ? "block" : "none";
-      document.getElementById("mine-panel").style.display    = mode === "mine"  ? "block" : "none";
-    }
+    document.getElementById("slider").addEventListener("ionInput", (ev) => {
+      if (currentOverlayLayer) currentOverlayLayer.opacity = ev.target.value / 100;
+    });
+    document.getElementById("sliderMobile").addEventListener("ionInput", (ev) => {
+      if (currentOverlayLayer) currentOverlayLayer.opacity = ev.target.value / 100;
+    });
 
-    function openDrawer() {
-      document.getElementById("viewerDrawer").classList.add("open");
-    }
-
-    function closeDrawer() {
-      document.getElementById("viewerDrawer").classList.remove("open");
-    }
-
-    document.getElementById("closeViewerBtn").addEventListener("click", closeDrawer);
-
-    // --- Mine metadata panel ---
-
+    // --- Mine panel HTML builder ---
     const USGS_BASE = "https://mrdata.usgs.gov/mrds/json";
 
     function formatMinePanel(siteName, siteUrl, data) {
-      const p = data.properties;
+      const p   = data.properties;
       const dep = p.deposits || {};
       const loc = p.location || {};
       const geo = p.geo_coordinates || {};
-      const owners    = Array.isArray(p.ownership)        ? p.ownership        : [];
-      const materials = Array.isArray(p.material)         ? p.material         : [];
-      const production = Array.isArray(p.production)      ? p.production       : [];
-      const plss      = Array.isArray(p.plss_coordinates) ? p.plss_coordinates : [];
-      const commodity = p.commodity || {};
+      const owners     = Array.isArray(p.ownership)        ? p.ownership        : [];
+      const materials  = Array.isArray(p.material)         ? p.material         : [];
+      const production = Array.isArray(p.production)       ? p.production       : [];
+      const plss       = Array.isArray(p.plss_coordinates) ? p.plss_coordinates : [];
+      const commodity  = p.commodity || {};
 
       const ownerRows = owners.map(o =>
-        `<tr><td>${o.owner_name ?? ""}</td><td>${o.owner_tp ?? ""}</td><td>${o.beg_yr ?? ""}${o.end_yr ? "–" + o.end_yr : ""}</td></tr>`
+        `<tr><td>${o.owner_name??""}</td><td>${o.owner_tp??""}</td><td>${o.beg_yr??""}${o.end_yr?"–"+o.end_yr:""}</td></tr>`
       ).join("");
-
       const matRows = materials.map(m =>
-        `<tr><td>${m.material ?? ""}</td><td>${m.ore_gangue ?? ""}</td></tr>`
+        `<tr><td>${m.material??""}</td><td>${m.ore_gangue??""}</td></tr>`
       ).join("");
-
-      const prodRows = production
-        .filter(r => r.yr)
-        .sort((a, b) => a.yr - b.yr)
-        .map(r => `<tr><td>${r.yr}</td><td>${Number(r.mined).toLocaleString()} ${r.units ?? ""}</td><td>${r.item ?? ""}</td></tr>`)
+      const prodRows = production.filter(r=>r.yr).sort((a,b)=>a.yr-b.yr)
+        .map(r=>`<tr><td>${r.yr}</td><td>${Number(r.mined).toLocaleString()} ${r.units??""}</td><td>${r.item??""}</td></tr>`)
         .join("");
-
-      const plssText = plss.map(p =>
-        `T${p.township ?? ""} R${p.range ?? ""}, Sec ${p.section ?? ""} ${p.sect_fract ?? ""}`
-      ).join("<br>");
+      const plssText = plss.map(p=>`T${p.township??""} R${p.range??""}, Sec ${p.section??""} ${p.sect_fract??""}`).join("<br>");
 
       return `
         <h3>Site</h3>
         <p><strong>${siteName}</strong></p>
-        ${siteUrl ? `<p><a href="${siteUrl}" target="_blank">Full record ↗</a></p>` : ""}
-        <p>${dep.dev_st ?? ""} &bull; ${dep.dep_tp ?? ""} &bull; ${dep.oper_tp ?? ""}</p>
-
+        ${siteUrl?`<p><a href="${siteUrl}" target="_blank">Full record ↗</a></p>`:""}
+        <p>${dep.dev_st??""} &bull; ${dep.dep_tp??""} &bull; ${dep.oper_tp??""}</p>
         <h3>Location</h3>
-        <p>${loc.county ?? ""} County, ${loc.state_prov ?? ""}</p>
-        <p>${geo.rel_pos ?? ""}</p>
-        ${plssText ? `<p>${plssText}</p>` : ""}
-
+        <p>${loc.county??""} County, ${loc.state_prov??""}</p>
+        <p>${geo.rel_pos??""}</p>
+        ${plssText?`<p>${plssText}</p>`:""}
         <h3>Years of Operation</h3>
-        <p>${dep.yr_fst_prd ?? "?"} – ${dep.yr_lst_prd ?? "?"}</p>
-        ${dep.prod_yrs ? `<p style="color:#aaa; font-size:12px;">${dep.prod_yrs}</p>` : ""}
-
+        <p>${dep.yr_fst_prd??"?"} – ${dep.yr_lst_prd??""}</p>
+        ${dep.prod_yrs?`<p style="color:#aaa;font-size:12px;">${dep.prod_yrs}</p>`:""}
         <h3>Commodity</h3>
-        <p>${commodity.commod ?? ""} (${commodity.commod_tp ?? ""}) &bull; ${commodity.import ?? ""}</p>
-
+        <p>${commodity.commod??""} (${commodity.commod_tp??""}) &bull; ${commodity.import??""}</p>
         <h3>Materials</h3>
-        <table>
-          <tr><th>Material</th><th>Type</th></tr>
-          ${matRows || "<tr><td colspan='2'>None recorded</td></tr>"}
-        </table>
-
+        <table><tr><th>Material</th><th>Type</th></tr>${matRows||"<tr><td colspan='2'>None recorded</td></tr>"}</table>
         <h3>Ownership</h3>
-        <table>
-          <tr><th>Owner/Operator</th><th>Role</th><th>Years</th></tr>
-          ${ownerRows || "<tr><td colspan='3'>None recorded</td></tr>"}
-        </table>
-
+        <table><tr><th>Owner/Operator</th><th>Role</th><th>Years</th></tr>${ownerRows||"<tr><td colspan='3'>None recorded</td></tr>"}</table>
         <h3>Production by Year</h3>
-        <table>
-          <tr><th>Year</th><th>Amount</th><th>Commodity</th></tr>
-          ${prodRows || "<tr><td colspan='3'>None recorded</td></tr>"}
-        </table>
+        <table><tr><th>Year</th><th>Amount</th><th>Commodity</th></tr>${prodRows||"<tr><td colspan='3'>None recorded</td></tr>"}</table>
       `;
     }
 
     async function openMineDrawer(siteName, siteUrl, depId) {
-      setDrawerMode("mine");
-      document.getElementById("viewer-title").innerText = siteName ?? "Mine Details";
-      document.getElementById("mine-loading").style.display = "block";
-      document.getElementById("mine-content").style.display = "none";
-      openDrawer();
-      try {
-        const resp = await fetch(`${USGS_BASE}/${depId}`);
-        const data = await resp.json();
-        document.getElementById("mine-content").innerHTML = formatMinePanel(siteName, siteUrl, data);
-        document.getElementById("mine-loading").style.display = "none";
-        document.getElementById("mine-content").style.display = "block";
-      } catch (e) {
-        document.getElementById("mine-loading").innerHTML =
-          `<p style="color:#f66;">Failed to load USGS data.</p>
-           ${siteUrl ? `<p><a href="${siteUrl}" target="_blank">View full record ↗</a></p>` : ""}`;
+      if (isMobile()) {
+        // Mobile: use ion-modal
+        document.getElementById("mine-modal-title").innerText = siteName ?? "Mine Details";
+        document.getElementById("mine-loading-mobile").style.display = "block";
+        document.getElementById("mine-content-mobile").style.display = "none";
+        await mineModal.present();
+        try {
+          const data = await (await fetch(`${USGS_BASE}/${depId}`)).json();
+          document.getElementById("mine-content-mobile").innerHTML = formatMinePanel(siteName, siteUrl, data);
+          document.getElementById("mine-loading-mobile").style.display = "none";
+          document.getElementById("mine-content-mobile").style.display = "block";
+        } catch(e) {
+          document.getElementById("mine-loading-mobile").innerHTML =
+            `<p style="color:#f66;">Failed to load USGS data.</p>${siteUrl?`<p><a href="${siteUrl}" target="_blank">View full record ↗</a></p>`:""}`;
+        }
+      } else {
+        // Desktop: use right drawer
+        setDrawerMode("mine");
+        document.getElementById("viewer-title").innerText = siteName ?? "Mine Details";
+        document.getElementById("mine-loading-desktop").style.display = "block";
+        document.getElementById("mine-content-desktop").style.display = "none";
+        openDrawer();
+        try {
+          const data = await (await fetch(`${USGS_BASE}/${depId}`)).json();
+          document.getElementById("mine-content-desktop").innerHTML = formatMinePanel(siteName, siteUrl, data);
+          document.getElementById("mine-loading-desktop").style.display = "none";
+          document.getElementById("mine-content-desktop").style.display = "block";
+        } catch(e) {
+          document.getElementById("mine-loading-desktop").innerHTML =
+            `<p style="color:#f66;">Failed to load USGS data.</p>${siteUrl?`<p><a href="${siteUrl}" target="_blank">View full record ↗</a></p>`:""}`;
+        }
       }
     }
 
     // --- Segment config ---
-
     const segmentConfig = {
       maps: {
-        layer: indexLayer,
-        layerView: null,
-        titleField: "title",
-        subtitleField: "mapyear",
-        searchFields: (val) =>
-          `(Upper(title) LIKE '%${val.toUpperCase()}%' OR Upper(tags) LIKE '%${val.toUpperCase()}%' OR datapub LIKE '%${val}%')`
+        layer: indexLayer, layerView: null,
+        titleField: "title", subtitleField: "mapyear",
+        searchFields: v => `(Upper(title) LIKE '%${v.toUpperCase()}%' OR Upper(tags) LIKE '%${v.toUpperCase()}%' OR datapub LIKE '%${v}%')`
       },
       places: {
-        layer: poiLayer,
-        layerView: null,
-        titleField: "Name",
-        subtitleField: "Address",
-        searchFields: (val) =>
-          `(Upper(name) LIKE '%${val.toUpperCase()}%' OR Upper(Address) LIKE '%${val.toUpperCase()}%')`
+        layer: poiLayer, layerView: null,
+        titleField: "Name", subtitleField: "Address",
+        searchFields: v => `(Upper(name) LIKE '%${v.toUpperCase()}%' OR Upper(Address) LIKE '%${v.toUpperCase()}%')`
       },
       photos: {
-        layer: vsLayer,
-        layerView: null,
-        titleField: "img_id",
-        subtitleField: "mapyear",
-        searchFields: (val) =>
-          `(Upper(img_id) LIKE '%${val.toUpperCase()}%')`
+        layer: vsLayer, layerView: null,
+        titleField: "img_id", subtitleField: "mapyear",
+        searchFields: v => `(Upper(img_id) LIKE '%${v.toUpperCase()}%')`
       },
       people: {
-        layer: cdLayer,
-        layerView: null,
-        titleField: "Name",
-        subtitleField: "Occupation",
-        searchFields: (val) =>
-          `(Upper(fullname) LIKE '%${val.toUpperCase()}%' OR Upper(occupation) LIKE '%${val.toUpperCase()}%' OR Upper(address) LIKE '%${val.toUpperCase()}%')`
+        layer: cdLayer, layerView: null,
+        titleField: "Name", subtitleField: "Occupation",
+        searchFields: v => `(Upper(fullname) LIKE '%${v.toUpperCase()}%' OR Upper(occupation) LIKE '%${v.toUpperCase()}%' OR Upper(address) LIKE '%${v.toUpperCase()}%')`
       }
     };
 
+    const indexLayerView = await view.whenLayerView(indexLayer);
     segmentConfig.maps.layerView = indexLayerView;
     map.addMany([poiLayer, cdLayer]);
 
@@ -687,197 +782,163 @@
     segmentConfig.photos.layerView = vsLV;
     segmentConfig.people.layerView = cdLV;
 
-    // --- Query helpers ---
+    let currentOverlayLayer = null;
+    let activeSegment = "maps";
 
     function buildWhereClause(cfg, searchVal) {
-      if (searchVal && searchVal.trim()) return cfg.searchFields(searchVal.trim());
-      return "1=1";
+      return searchVal?.trim() ? cfg.searchFields(searchVal.trim()) : "1=1";
     }
 
     async function queryLayerInExtent(cfg, searchVal) {
-      const query = cfg.layer.createQuery();
-      query.returnGeometry = true;
-      query.geometry = view.extent;
-      query.where = buildWhereClause(cfg, searchVal);
-      const results = await cfg.layer.queryFeatures(query);
-      return results.features;
+      const q = cfg.layer.createQuery();
+      q.returnGeometry = true;
+      q.geometry = view.extent;
+      q.where = buildWhereClause(cfg, searchVal);
+      return (await cfg.layer.queryFeatures(q)).features;
     }
-
-    // --- Sort helpers ---
 
     function sortFeatures(features, segment) {
-      if (segment === "maps") {
-        // Primary: title A-Z, secondary: mapyear descending (latest first)
-        return [...features].sort((a, b) => {
-          const titleA = (a.attributes.title ?? "").toUpperCase();
-          const titleB = (b.attributes.title ?? "").toUpperCase();
-          if (titleA < titleB) return -1;
-          if (titleA > titleB) return 1;
-          // Same title — sort by year descending
-          const yearA = parseInt(a.attributes.mapyear) || 0;
-          const yearB = parseInt(b.attributes.mapyear) || 0;
-          return yearB - yearA;
-        });
-      }
-      return features; // other tabs unsorted for now
+      if (segment !== "maps") return features;
+      return [...features].sort((a, b) => {
+        const ta = (a.attributes.title ?? "").toUpperCase();
+        const tb = (b.attributes.title ?? "").toUpperCase();
+        if (ta < tb) return -1; if (ta > tb) return 1;
+        return (parseInt(b.attributes.mapyear)||0) - (parseInt(a.attributes.mapyear)||0);
+      });
     }
 
-    // --- Badges ---
-
+    // --- Badges (shared — updates both desktop and mobile) ---
     async function updateAllBadges(searchVal) {
-      const tabs = ["maps", "places", "photos", "people"];
-      await Promise.all(tabs.map(async (tab) => {
+      const tabs = ["maps","places","photos","people"];
+      await Promise.all(tabs.map(async tab => {
         const cfg = segmentConfig[tab];
         try {
-          const query = cfg.layer.createQuery();
-          query.geometry = view.extent;
-          query.where = buildWhereClause(cfg, searchVal);
-          const count = await cfg.layer.queryFeatureCount(query);
-          const badge = document.getElementById(`badge-${tab}`);
-          if (badge) badge.innerText = count;
-        } catch (e) { /* leave badge as-is */ }
+          const q = cfg.layer.createQuery();
+          q.geometry = view.extent;
+          q.where = buildWhereClause(cfg, searchVal);
+          const count = await cfg.layer.queryFeatureCount(q);
+          // Update both desktop and mobile badges
+          const b1 = document.getElementById(`badge-${tab}`);
+          const b2 = document.getElementById(`mob-badge-${tab}`);
+          if (b1) b1.innerText = count;
+          if (b2) b2.innerText = count;
+        } catch(e) {}
       }));
     }
 
-    // --- Results list ---
+    // --- Result item click handler (shared logic) ---
+    async function handleResultClick(feature, segment) {
+      if (segment === "maps") {
+        loadMapOverlay(feature);
+      } else if (segment === "photos") {
+        const imgId   = feature.attributes.img_id;
+        const mapcode = feature.attributes.mapyear;
+        vsLayer.definitionExpression   = `img_id = '${imgId}'`;
+        bldgLayer.definitionExpression = `img_id = '${imgId}'`;
+        loadSanbornForMapcode(mapcode);
+        clearBldgHighlight();
+        const fpq = fpLayer.createQuery();
+        fpq.where = `img_id = '${imgId}'`; fpq.returnGeometry = true; fpq.outFields = ["*"];
+        const fpResult = await fpLayer.queryFeatures(fpq);
+        if (fpResult.features.length) {
+          const fpFeat = fpResult.features[0];
+          const fpLV = await view.whenLayerView(fpLayer);
+          fpLV.highlight(fpFeat);
+          view.goTo({ center: fpFeat.geometry, zoom: 16 }, { duration: 600 });
+        } else {
+          view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
+        }
+        if (isMobile()) {
+          await openMobilePhotoViewer(imgId);
+        } else {
+          openViewerDrawer(imgId);
+        }
+      } else {
+        const geom = feature.geometry.type === "polygon" ? feature.geometry.centroid : feature.geometry;
+        loadSanbornForMapcode(feature.attributes.mapyear);
+        markerLayer.removeAll();
+        markerLayer.add(new Graphic({
+          geometry: geom,
+          symbol: { type: "simple-marker", color: [255,204,0], size: 12, outline: { color: [0,0,0], width: 1.5 } }
+        }));
+        view.goTo({ center: geom, zoom: 17 }, { duration: 400 });
+      }
+    }
 
+    // --- Build a result item element ---
+    function buildResultItem(feature, segment) {
+      const cfg    = segmentConfig[segment];
+      const title  = feature.attributes[cfg.titleField]    ?? "(no title)";
+      const sub    = feature.attributes[cfg.subtitleField] ?? "";
+      const item   = document.createElement("ion-item");
+      if (segment === "people") {
+        const addr = feature.attributes.Address ?? "";
+        const yr   = feature.attributes.dirYear ?? "";
+        item.innerHTML = `<ion-label><h2>${title}</h2><p>${sub}</p><p>${addr}</p><p>${yr}</p></ion-label>`;
+      } else {
+        item.innerHTML = `<ion-label><h2>${title}</h2><p>${sub}</p></ion-label>`;
+      }
+      item.addEventListener("click", () => handleResultClick(feature, segment));
+      return item;
+    }
+
+    // --- Desktop results ---
     async function populateResults(searchVal) {
       const cfg = segmentConfig[activeSegment];
       const resultList  = document.getElementById("result-list");
       const resultBlock = document.getElementById("result-block");
-
-      resultList.innerHTML = "";
-      resultBlock.innerText = "Results";
-
+      resultList.innerHTML = ""; resultBlock.innerText = "Results";
       let features = [];
-      try {
-        features = await queryLayerInExtent(cfg, searchVal);
-      } catch (e) {
-        resultBlock.innerText = "Results (unavailable)";
-        return;
-      }
-
-      // Sort before rendering
+      try { features = await queryLayerInExtent(cfg, searchVal); }
+      catch(e) { resultBlock.innerText = "Results (unavailable)"; return; }
       features = sortFeatures(features, activeSegment);
-
       resultBlock.innerText = `Results (${features.length})`;
-
       if (cfg.layerView) {
-        const objectIds = features.map(f => f.attributes[cfg.layer.objectIdField] ?? f.attributes.OBJECTID);
-        cfg.layerView.filter = { objectIds };
+        cfg.layerView.filter = { objectIds: features.map(f => f.attributes[cfg.layer.objectIdField] ?? f.attributes.OBJECTID) };
       }
-
-      features.forEach((feature) => {
-        const title    = feature.attributes[cfg.titleField]    ?? "(no title)";
-        const subtitle = feature.attributes[cfg.subtitleField] ?? "";
-
-        const item = document.createElement("ion-item");
-
-        if (activeSegment === "people") {
-          const address = feature.attributes.Address ?? "";
-          const dirYear = feature.attributes.dirYear ?? "";
-          item.innerHTML = `<ion-label>
-            <h2>${title}</h2>
-            <p>${subtitle}</p>
-            <p>${address}</p>
-            <p>${dirYear}</p>
-          </ion-label>`;
-        } else {
-          item.innerHTML = `<ion-label>
-            <h2>${title}</h2>
-            <p>${subtitle}</p>
-          </ion-label>`;
-        }
-
-        item.addEventListener("click", async () => {
-          if (activeSegment === "maps") {
-            loadMapOverlay(feature);
-          } else if (activeSegment === "photos") {
-            const imgId   = feature.attributes.img_id;
-            const mapcode = feature.attributes.mapyear;
-            vsLayer.definitionExpression   = `img_id = '${imgId}'`;
-            bldgLayer.definitionExpression = `img_id = '${imgId}'`;
-            loadSanbornForMapcode(mapcode);
-            clearBldgHighlight();
-            const fpQuery = fpLayer.createQuery();
-            fpQuery.where = `img_id = '${imgId}'`;
-            fpQuery.returnGeometry = true;
-            fpQuery.outFields = ["*"];
-            const fpResult = await fpLayer.queryFeatures(fpQuery);
-            if (fpResult.features.length) {
-              const fpFeature = fpResult.features[0];
-              const fpLV = await view.whenLayerView(fpLayer);
-              fpLV.highlight(fpFeature);
-              view.goTo({ center: fpFeature.geometry, zoom: 16 }, { duration: 600 });
-            } else {
-              view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
-            }
-            openViewerDrawer(imgId);
-          } else if (activeSegment === "places" || activeSegment === "people") {
-            const geom = feature.geometry.type === "polygon"
-              ? feature.geometry.centroid
-              : feature.geometry;
-            loadSanbornForMapcode(feature.attributes.mapyear);
-            markerLayer.removeAll();
-            markerLayer.add(new Graphic({
-              geometry: geom,
-              symbol: {
-                type: "simple-marker",
-                color: [255, 204, 0],
-                size: 12,
-                outline: { color: [0, 0, 0], width: 1.5 }
-              }
-            }));
-            view.goTo({ center: geom, zoom: 17 }, { duration: 400 });
-          }
-        });
-
-        resultList.appendChild(item);
-      });
+      features.forEach(f => resultList.appendChild(buildResultItem(f, activeSegment)));
     }
 
-    // --- Full refresh ---
+    // --- Mobile results ---
+    async function populateMobileResults(searchVal) {
+      const cfg = segmentConfig[mobileActiveTab];
+      const resultList  = document.getElementById("mobile-result-list");
+      const resultBlock = document.getElementById("mobile-result-block");
+      resultList.innerHTML = ""; resultBlock.innerText = "Results";
+      let features = [];
+      try { features = await queryLayerInExtent(cfg, searchVal); }
+      catch(e) { resultBlock.innerText = "Results (unavailable)"; return; }
+      features = sortFeatures(features, mobileActiveTab);
+      resultBlock.innerText = `Results (${features.length})`;
+      features.forEach(f => resultList.appendChild(buildResultItem(f, mobileActiveTab)));
+    }
 
     async function filterItems() {
       const searchVal = document.getElementById("searchBar").value || "";
       await Promise.all([updateAllBadges(searchVal), populateResults(searchVal)]);
     }
 
-    // --- Load Sanborn overlay by mapcode ---
-
+    // --- Sanborn overlay ---
     async function loadSanbornForMapcode(mapcode) {
-      console.log("[Sanborn] loadSanbornForMapcode called with:", mapcode);
-      if (!mapcode) { console.warn("[Sanborn] No mapcode provided — aborting"); return; }
-
-      const query = indexLayer.createQuery();
-      query.where = `mapcode = '${mapcode}'`;
-      query.outFields = ["service_url", "mapcode"];
-      query.returnGeometry = false;
-
+      if (!mapcode) return;
+      const q = indexLayer.createQuery();
+      q.where = `mapcode = '${mapcode}'`;
+      q.outFields = ["service_url"]; q.returnGeometry = false;
       try {
-        const results = await indexLayer.queryFeatures(query);
-        console.log("[Sanborn] Query returned", results.features.length, "features");
-        if (!results.features.length) { console.warn("[Sanborn] No match for mapcode:", mapcode); return; }
-
-        const serviceUrl = results.features[0].attributes.service_url;
-        if (!serviceUrl) { console.warn("[Sanborn] service_url empty"); return; }
-
+        const res = await indexLayer.queryFeatures(q);
+        if (!res.features.length) return;
+        const serviceUrl = res.features[0].attributes.service_url;
+        if (!serviceUrl) return;
         if (currentOverlayLayer) { map.remove(currentOverlayLayer); currentOverlayLayer = null; }
-
         currentOverlayLayer = serviceUrl.includes("{z}")
           ? new WebTileLayer({ urlTemplate: serviceUrl })
           : new TileLayer({ url: serviceUrl });
-
         map.add(currentOverlayLayer);
         map.reorder(currentOverlayLayer, 1);
         currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
-        console.log("[Sanborn] Layer added at position 1");
-      } catch (e) {
-        console.error("[Sanborn] Error:", e);
-      }
+        
+      } catch(e) { console.error("[Sanborn]", e); }
     }
-
-    // --- Map overlay (Maps tab) ---
 
     function loadMapOverlay(feature) {
       if (currentOverlayLayer) { map.remove(currentOverlayLayer); currentOverlayLayer = null; }
@@ -889,31 +950,43 @@
       map.add(currentOverlayLayer);
       map.reorder(currentOverlayLayer, 1);
       currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
+      
     }
 
-    // --- Popup watch ---
+    // --- Shared feature handler (called from both desktop watch and mobile click) ---
+    async function handleFeatureClick(graphic) {
+      if (!graphic?.layer) return;
 
-    reactiveUtils.watch(
-      () => view.popup.selectedFeature,
-      async (graphic) => {
-        if (!graphic || !graphic.layer) return;
-
-        if (graphic.layer.id === "fp") {
-          const imgId   = graphic.attributes.img_id;
-          const mapcode = graphic.attributes.mapyear;
-          console.log("[fp click] img_id:", imgId, "| mapyear:", mapcode);
-          vsLayer.definitionExpression   = `img_id = '${imgId}'`;
-          bldgLayer.definitionExpression = `img_id = '${imgId}'`;
-          view.goTo({ center: graphic.geometry, zoom: 16 }, { duration: 600 });
-          clearBldgHighlight();
-          loadSanbornForMapcode(mapcode);
+      if (graphic.layer.id === "fp") {
+        const imgId   = graphic.attributes.img_id;
+        const mapcode = graphic.attributes.mapyear;
+        vsLayer.definitionExpression   = `img_id = '${imgId}'`;
+        bldgLayer.definitionExpression = `img_id = '${imgId}'`;
+        view.goTo({ center: graphic.geometry, zoom: 16 }, { duration: 600 });
+        clearBldgHighlight();
+        loadSanbornForMapcode(mapcode);
+        if (isMobile()) {
+          await openMobilePhotoViewer(imgId);
+        } else {
           openViewerDrawer(imgId);
         }
+      }
 
-        if (graphic.layer.id === "bldg") {
-          const imgCoords = graphic.attributes.img_coords;
-          if (!imgCoords) return;
-          const imgId  = graphic.attributes.img_id;
+      if (graphic.layer.id === "bldg") {
+        const imgCoords = graphic.attributes.img_coords;
+        if (!imgCoords) return;
+        const imgId = graphic.attributes.img_id;
+        if (isMobile()) {
+          const photoOpen = !photoModal.classList.contains("modal-dismissed");
+          if (!photoOpen) {
+            vsLayer.definitionExpression   = `img_id = '${imgId}'`;
+            bldgLayer.definitionExpression = `img_id = '${imgId}'`;
+            await openMobilePhotoViewer(imgId);
+            getMobileOsd().addOnceHandler("open", () => highlightBldgInOSD(imgCoords, getMobileOsd()));
+          } else {
+            highlightBldgInOSD(imgCoords, getMobileOsd());
+          }
+        } else {
           const isOpen = document.getElementById("viewerDrawer").classList.contains("open");
           if (!isOpen) {
             vsLayer.definitionExpression   = `img_id = '${imgId}'`;
@@ -924,57 +997,61 @@
             highlightBldgInOSD(imgCoords);
           }
         }
-
-        if (graphic.layer.id === "mines") {
-          openMineDrawer(
-            graphic.attributes.site_name,
-            graphic.attributes.url,
-            graphic.attributes.dep_id
-          );
-        }
       }
-    );
 
-    // --- ViewerJS (legacy) ---
-
-    const viewer = new Viewer(document.getElementById("image"), { navbar: false, toolbar: true });
-
-    function updateViewer() {
-      const feature = view.popup.selectedFeature;
-      if (!feature) return;
-      document.getElementById("image").src =
-        "https://portal1-geo.sabu.mtu.edu/images/historic_images/" +
-        feature.attributes.filename + ".jpg";
-      document.getElementById("image").alt = feature.attributes.title;
-      viewer.update();
+      if (graphic.layer.id === "mines") {
+        openMineDrawer(graphic.attributes.site_name, graphic.attributes.url, graphic.attributes.dep_id);
+      }
     }
 
+    // --- Desktop: use selectedFeature watch (popup is enabled) ---
+    if (!isMobile()) {
+      reactiveUtils.watch(
+        () => view.popup.selectedFeature,
+        async (graphic) => { await handleFeatureClick(graphic); }
+      );
+    }
+
+    // --- Mobile: use view click + hitTest (popup is disabled) ---
+    if (isMobile()) {
+      view.on("click", async (event) => {
+        const response = await view.hitTest(event, {
+          include: [fpLayer, bldgLayer, minesLayer]
+        });
+        if (!response.results.length) return;
+        const graphic = response.results[0].graphic;
+        await handleFeatureClick(graphic);
+      });
+    }
+
+    // --- ViewerJS (legacy) ---
+    const viewer = new Viewer(document.getElementById("image"), { navbar: false, toolbar: true });
     document.addEventListener("click", (e) => {
-      if (e.target.closest(".esri-popup__content img")) { updateViewer(); viewer.show(); }
+      if (e.target.closest(".esri-popup__content img")) {
+        const feature = view.popup.selectedFeature;
+        if (!feature) return;
+        document.getElementById("image").src =
+          "https://portal1-geo.sabu.mtu.edu/images/historic_images/" + feature.attributes.filename + ".jpg";
+        document.getElementById("image").alt = feature.attributes.title;
+        viewer.update(); viewer.show();
+      }
     });
 
-    // --- Event bindings ---
-
+    // --- Desktop event bindings ---
     document.getElementById("searchBar").addEventListener("ionInput", filterItems);
 
-    document.getElementById("slider").addEventListener("ionInput", (ev) => {
-      if (currentOverlayLayer) currentOverlayLayer.opacity = ev.target.value / 100;
-    });
-
-    document.querySelectorAll("#mainTabBar ion-tab-button").forEach((btn) => {
+    document.querySelectorAll("#mainTabBar ion-tab-button").forEach(btn => {
       btn.addEventListener("click", async () => {
         activeSegment = btn.getAttribute("tab");
         document.querySelectorAll("#mainTabBar ion-tab-button").forEach(b => b.removeAttribute("selected"));
         btn.setAttribute("selected", "true");
-        const searchVal = document.getElementById("searchBar").value || "";
-        await populateResults(searchVal);
+        await populateResults(document.getElementById("searchBar").value || "");
       });
     });
 
-    view.watch("stationary", (isStationary) => { if (isStationary) filterItems(); });
+    view.watch("stationary", isStationary => { if (isStationary) filterItems(); });
 
     // --- Initial load ---
-
     await view.when();
     await indexLayer.when();
     filterItems();

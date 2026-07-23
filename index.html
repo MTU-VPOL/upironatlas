@@ -21,22 +21,165 @@
   <link rel="stylesheet" href="https://js.arcgis.com/4.23/esri/themes/dark/main.css" />
   <script src="https://js.arcgis.com/4.23/"></script>
 
+  <!-- Portfolio typefaces -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300;0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
   <style>
-    /* ===================== BASE ===================== */
+    /* ===== EXACT PORTFOLIO DESIGN TOKENS (from style.css) ===== */
+    :root {
+      --paper:       #f4ecd8;
+      --paper-deep:  #ece1c8;
+      --ink:         #3d3528;
+      --ink-soft:    #6b6150;
+      --surveyor:    #1a2f23;
+      --forest:      #2d4a3e;
+      --sage:        #8a9b8e;
+      --route:       #c75d3a;
+      --route-deep:  #a8472a;
+
+      --font-display: "Source Serif 4", Georgia, serif;
+      --font-body:    "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono:    "JetBrains Mono", "SF Mono", Consolas, monospace;
+
+      --radius: 3px;
+    }
+
+    /* ===== BASE ===== */
     html, body, ion-app, ion-content, ion-split-pane, ion-menu, #viewDiv {
       height: 100%; width: 100%; margin: 0; padding: 0;
     }
-
-    ion-toolbar { --background: #285756; --color: white; }
-    #filters { padding: 10px; }
-    #viewDiv { height: 100%; width: 100%; }
+    body { font-family: var(--font-body); background: var(--paper); color: var(--ink); font-size: 16px; line-height: 1.55; }
+    #viewDiv { height: 100%; width: 100%;}
     #image { display: none; }
     .esri-popup__content img { cursor: pointer; }
 
-    /* ===================== PULSING DOT ===================== */
+    /* ===== IONIC GLOBAL OVERRIDES ===== */
+    ion-app {
+      --ion-background-color: var(--paper);
+      --ion-text-color: var(--ink);
+      --ion-font-family: var(--font-body);
+    }
+
+    /* ===== MAIN TOOLBAR — surveyor dark header ===== */
+    ion-toolbar {
+      --background: var(--surveyor);
+      --color: var(--paper);
+      --border-color: var(--forest);
+    }
+    ion-title {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 19px;
+      letter-spacing: 0.01em;
+      color: var(--paper);
+    }
+
+    /* ===== SIDEBAR / LEFT MENU ===== */
+    ion-menu {
+      --background: var(--paper-deep);
+      --ion-background-color: var(--paper-deep);
+    }
+    ion-menu ion-toolbar {
+      --background: var(--forest);
+      --color: var(--paper);
+    }
+    ion-menu ion-title {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--paper);
+      opacity: 0.85;
+    }
+    #filters { padding: 8px; }
+
+    /* ===== SEARCHBAR ===== */
+    ion-searchbar {
+      --background: var(--paper);
+      --color: var(--ink);
+      --placeholder-color: var(--ink-soft);
+      --icon-color: var(--ink-soft);
+      --border-radius: var(--radius);
+      --box-shadow: inset 0 1px 3px rgba(61,53,40,0.12);
+      font-family: var(--font-body);
+      font-size: 14px;
+    }
+
+    /* ===== LIST ITEMS ===== */
+    ion-item {
+      --background: transparent;
+      --background-hover: rgba(26,47,35,0.05);
+      --color: var(--ink);
+      --border-color: rgba(61,53,40,0.14);
+      font-family: var(--font-body);
+      cursor: pointer;
+    }
+    ion-item ion-label h2 {
+      font-family: var(--font-display);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--surveyor);
+      line-height: 1.25;
+    }
+    ion-item ion-label p {
+      font-family: var(--font-body);
+      font-size: 12.5px;
+      color: var(--ink-soft);
+    }
+
+    /* Result count label */
+    #result-block {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--sage);
+    }
+
+    /* ===== ION-LABEL / ION-RANGE ===== */
+    ion-label {
+      font-family: var(--font-body);
+      color: var(--ink-soft);
+      font-size: 13px;
+    }
+    ion-range {
+      --bar-background: rgba(61,53,40,0.2);
+      --bar-background-active: var(--surveyor);
+      --knob-background: var(--surveyor);
+      --pin-background: var(--surveyor);
+      --pin-color: var(--paper);
+    }
+
+    /* ===== DESKTOP TAB BAR (in sidebar) ===== */
+    ion-tab-bar {
+      --background: var(--paper-deep);
+      border-top: 1px solid rgba(61,53,40,0.18);
+      border-bottom: 1px solid rgba(61,53,40,0.18);
+    }
+    ion-tab-button {
+      --color: var(--ink-soft);
+      --color-selected: var(--surveyor);
+      font-family: var(--font-body);
+      font-size: 11px;
+    }
+    ion-tab-button[selected] {
+      border-bottom: 2px solid var(--route);
+    }
+    ion-badge {
+      --background: var(--route);
+      --color: var(--paper);
+      font-family: var(--font-mono);
+      font-size: 10px;
+    }
+
+    /* ===== PULSING DOT ===== */
     .pulsing-dot {
       width: 20px; height: 20px;
-      background-color: rgb(255,0,0);
+      background-color: var(--route);
       border-radius: 50%; position: absolute;
       transform: translate(-50%,-50%);
       pointer-events: none;
@@ -47,159 +190,209 @@
       border-radius: 50%; z-index: -1;
       animation: pulse-grow 1.3s ease-in-out infinite;
     }
-    .pulsing-dot::before { background: rgba(255,0,0,0.6); animation-delay: -0.5s; }
-    .pulsing-dot::after  { background: rgba(255,0,0,0.3); }
+    .pulsing-dot::before { background: rgba(199,93,58,0.6); animation-delay: -0.5s; }
+    .pulsing-dot::after  { background: rgba(199,93,58,0.3); }
     @keyframes pulse-grow {
       0%   { transform: scale(1);   opacity: 1; }
       100% { transform: scale(2.2); opacity: 0; }
     }
 
-    /* ===================== RIGHT DRAWER (desktop) ===================== */
+    /* ===== RIGHT DRAWER (desktop only) ===== */
     #viewerDrawer {
       position: fixed; top: 0; right: 0;
       width: 30%; min-width: 280px;
       height: calc(100% - 56px); margin-top: 56px;
-      background: var(--ion-background-color, #1e1e1e);
+      background: var(--paper-deep);
       display: flex; flex-direction: column;
       transform: translateX(100%);
       transition: transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
       z-index: 999;
-      box-shadow: -4px 0 20px rgba(0,0,0,0.4);
-      border-left: 1px solid rgba(255,255,255,0.07);
+      box-shadow: -4px 0 24px rgba(26,47,35,0.14);
+      border-left: 1px solid rgba(61,53,40,0.18);
     }
     #viewerDrawer.open { transform: translateX(0); }
+
     #viewer-header {
       display: flex; align-items: center; justify-content: space-between;
       height: 56px; min-height: 56px; padding: 0 8px 0 16px;
-      background: var(--ion-color-dark, #222428);
-      border-bottom: 1px solid rgba(255,255,255,0.07);
+      background: var(--forest);
+      border-bottom: 1px solid rgba(61,53,40,0.2);
       flex-shrink: 0;
     }
     #viewer-header ion-title {
-      padding: 0; font-size: 17px; font-weight: 600; color: #fff; flex: 1;
+      padding: 0;
+      font-family: var(--font-display);
+      font-size: 15px; font-weight: 600;
+      color: var(--paper); flex: 1;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    #viewer-header ion-button { --color: var(--paper); --color-hover: var(--route); }
+
     #viewer-body {
       flex: 1; overflow-y: auto; display: flex; flex-direction: column;
-      background: var(--ion-background-color, #1e1e1e);
+      background: var(--paper-deep);
     }
-    #osd-container { width: 100%; flex: 1; min-height: 300px; background: #111; }
+    #osd-container { width: 100%; flex: 1; min-height: 300px; background: var(--surveyor); }
     #osd-placeholder {
       display: flex; flex-direction: column;
       align-items: center; justify-content: center;
-      height: 100%; color: #888; font-size: 14px; gap: 12px;
+      height: 100%; color: var(--sage);
+      font-family: var(--font-mono); font-size: 13px; gap: 12px;
     }
-    #osd-placeholder ion-icon { font-size: 48px; color: #444; }
+    #osd-placeholder ion-icon { font-size: 48px; color: var(--sage); opacity: 0.5; }
     #viewer-meta {
-      padding: 8px 12px; background: #1a1a1a; color: #ccc; font-size: 12px;
-      border-top: 1px solid #333; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
+      padding: 8px 12px;
+      background: var(--paper);
+      color: var(--sage);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      border-top: 1px solid rgba(61,53,40,0.14);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    /* ===================== MINE PANEL ===================== */
-    .mine-panel-inner { font-size: 13px; line-height: 1.5; padding: 12px; color: #eee; }
+    /* ===== MINE PANEL ===== */
+    .mine-panel-inner {
+      font-family: var(--font-body);
+      font-size: 14px; line-height: 1.65;
+      padding: 16px; color: var(--ink);
+      background: var(--paper-deep);
+    }
     .mine-panel-inner h3 {
-      font-size: 14px; font-weight: 700; color: #aaa;
-      text-transform: uppercase; letter-spacing: 0.05em;
-      margin: 16px 0 6px; border-bottom: 1px solid #333; padding-bottom: 4px;
+      font-family: var(--font-mono);
+      font-size: 11px; font-weight: 500;
+      color: var(--route);
+      text-transform: uppercase; letter-spacing: 0.08em;
+      margin: 20px 0 8px;
+      border-bottom: 1px solid rgba(61,53,40,0.18);
+      padding-bottom: 4px;
     }
-    .mine-panel-inner p { margin: 3px 0; }
-    .mine-panel-inner a { color: #4fc3f7; }
-    .mine-panel-inner table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; }
-    .mine-panel-inner th { text-align: left; color: #aaa; padding: 3px 6px; border-bottom: 1px solid #333; }
-    .mine-panel-inner td { padding: 3px 6px; border-bottom: 1px solid #222; }
-
-    /* ===================== DESKTOP TAB BAR (in sidebar) ===================== */
-    ion-tab-bar { --background: var(--ion-color-step-50, #f2f2f2); }
-
-    /* ===================== OPACITY SLIDER OVERLAY ===================== */
-    /* On desktop: slider stays in the sidebar (its original location, no overlay needed) */
-    /* On mobile: floats under the navbar */
-    #sliderOverlay {
-      display: none; /* hidden on desktop — slider is in sidebar instead */
+    .mine-panel-inner h3:first-child { margin-top: 0; }
+    .mine-panel-inner p { margin: 3px 0; color: var(--ink-soft); font-size: 14px; }
+    .mine-panel-inner strong { color: var(--surveyor); font-weight: 600; }
+    .mine-panel-inner a { color: var(--route); font-weight: 600; border-bottom: 1px solid rgba(199,93,58,0.4); }
+    .mine-panel-inner a:hover { color: var(--route-deep); }
+    .mine-panel-inner table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 13px; }
+    .mine-panel-inner th {
+      text-align: left;
+      font-family: var(--font-mono); font-size: 10px;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      color: var(--sage);
+      padding: 5px 8px;
+      border-bottom: 1px solid rgba(61,53,40,0.18);
     }
+    .mine-panel-inner td {
+      padding: 5px 8px;
+      border-bottom: 1px solid rgba(61,53,40,0.1);
+      color: var(--ink-soft);
+    }
+    .mine-panel-inner tr:hover td { background: rgba(26,47,35,0.04); }
 
+    /* ===== ESRI POPUP ===== */
+    .esri-popup__header-title { font-family: var(--font-display) !important; }
+    .esri-popup__content { font-family: var(--font-body) !important; }
+
+    /* ===== OPACITY SLIDER OVERLAY (mobile only) ===== */
+    #sliderOverlay { display: none; }
     @media (max-width: 768px) {
       #sliderOverlay {
         display: flex;
-        position: fixed;
-        top: 56px;
-        left: 0; right: 0;
+        position: fixed; top: 56px; left: 0; right: 0;
         z-index: 500;
-        background: rgba(30,30,30,0.85);
-        backdrop-filter: blur(4px);
+        background: rgba(244,236,216,0.92);
+        backdrop-filter: blur(6px);
+        border-bottom: 1px solid rgba(61,53,40,0.18);
         padding: 4px 16px;
-        align-items: center;
-        gap: 10px;
+        align-items: center; gap: 10px;
       }
-      #sliderOverlay ion-label { color: #fff; font-size: 13px; white-space: nowrap; }
+      #sliderOverlay ion-label { color: var(--ink-soft); font-size: 12px; white-space: nowrap; }
       #sliderOverlay ion-range { flex: 1; }
     }
 
-    /* ===================== MOBILE BOTTOM TABS ===================== */
+    /* ===== MOBILE BOTTOM TABS ===== */
     #mobileTabBar {
       display: none;
       position: fixed; bottom: 0; left: 0; right: 0;
       z-index: 600;
-      --background: #222428;
-      border-top: 1px solid rgba(255,255,255,0.1);
+      --background: var(--paper-deep);
+      border-top: 1px solid rgba(61,53,40,0.18);
     }
+    #mobileTabBar ion-tab-button { --color: var(--ink-soft); --color-selected: var(--surveyor); }
+    #mobileTabBar ion-tab-button[selected] { border-top: 2px solid var(--route); }
 
-    /* ===================== GPS FAB (mobile only) ===================== */
+    /* ===== GPS FAB (mobile only) ===== */
     #gpsFab {
       display: none;
-      position: fixed;
-      bottom: 70px; /* above mobile tab bar */
-      right: 16px;
-      z-index: 700;
+      position: fixed; bottom: 70px; right: 16px; z-index: 700;
+    }
+    ion-fab-button {
+      --background: var(--paper);
+      --background-activated: var(--paper-deep);
+      --color: var(--surveyor);
+      --box-shadow: 0 2px 8px rgba(26,47,35,0.18);
+      border: 1px solid rgba(61,53,40,0.2);
+    }
+    ion-fab-button.active {
+      --background: var(--surveyor);
+      --color: var(--paper);
     }
 
-    /* ===================== MOBILE SHEET MODAL ===================== */
+    /* ===== MOBILE SHEET MODAL ===== */
     ion-modal#sheetModal {
       --height: 50%;
-      --border-radius: 16px 16px 0 0;
+      --border-radius: 12px 12px 0 0;
+      --background: var(--paper-deep);
+      --box-shadow: 0 -4px 24px rgba(26,47,35,0.14);
     }
     .sheet-modal-content {
       display: flex; flex-direction: column; height: 100%;
-      background: var(--ion-background-color, #1e1e1e);
+      background: var(--paper-deep);
     }
     .sheet-modal-handle {
       width: 36px; height: 4px; border-radius: 2px;
-      background: rgba(255,255,255,0.3);
-      margin: 10px auto 6px;
-      flex-shrink: 0;
+      background: rgba(61,53,40,0.25);
+      margin: 10px auto 6px; flex-shrink: 0;
     }
-    .sheet-search {
-      padding: 0 12px 8px;
-      flex-shrink: 0;
-    }
+    .sheet-search { padding: 0 8px 6px; flex-shrink: 0; }
     .sheet-results { flex: 1; overflow-y: auto; }
-
-    /* OSD inside sheet modal */
-    #mobileOsdContainer {
-      width: 100%; flex: 1; min-height: 200px; background: #111;
+    #mobile-result-block {
+      font-family: var(--font-mono);
+      font-size: 10px; font-weight: 500;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--sage); padding: 0 8px 4px;
     }
 
-    /* ===================== MINE MODAL ===================== */
-    ion-modal#mineModal { --border-radius: 12px; }
+    /* ===== MOBILE PHOTO MODAL ===== */
+    ion-modal#photoModal {
+      --height: 50%;
+      --border-radius: 12px 12px 0 0;
+      --box-shadow: 0 -4px 24px rgba(26,47,35,0.14);
+    }
+
+    /* ===== MINE MODAL ===== */
+    ion-modal#mineModal {
+      --border-radius: var(--radius);
+      --background: var(--paper-deep);
+    }
+    ion-modal#mineModal ion-toolbar {
+      --background: var(--forest);
+      --color: var(--paper);
+    }
+    ion-modal#mineModal ion-title {
+      font-family: var(--font-display);
+      font-size: 16px; font-weight: 600;
+    }
     #mineModalContent {
       height: 100%; overflow-y: auto;
-      background: var(--ion-background-color, #1e1e1e);
+      background: var(--paper-deep);
     }
 
-    /* ===================== RESPONSIVE BREAKPOINT ===================== */
+    /* ===== RESPONSIVE BREAKPOINT ===== */
     @media (max-width: 768px) {
-      /* Hide desktop sidebar */
       ion-split-pane { --side-max-width: 0; --side-min-width: 0; }
       ion-menu[side="start"] { display: none !important; }
-
-      /* Hide desktop right drawer */
       #viewerDrawer { display: none !important; }
-
-      /* Show mobile elements */
       #mobileTabBar { display: flex !important; }
       #gpsFab       { display: block !important; }
-
-      /* Push map up to avoid bottom tab bar overlap */
       #viewDiv { height: calc(100% - 56px) !important; }
     }
   </style>
@@ -492,12 +685,12 @@
         trackWidget.start();
         trackActive = true;
         document.getElementById("gpsIcon").setAttribute("name", "locate");
-        document.getElementById("gpsBtn").setAttribute("color", "success");
+        document.getElementById("gpsBtn").classList.add("active");
       } else {
         trackWidget.stop();
         trackActive = false;
         document.getElementById("gpsIcon").setAttribute("name", "locate-outline");
-        document.getElementById("gpsBtn").setAttribute("color", "dark");
+        document.getElementById("gpsBtn").classList.remove("active");
       }
     });
 

@@ -62,18 +62,19 @@
       --ion-font-family: var(--font-body);
     }
 
-    /* ===== MAIN TOOLBAR — surveyor dark header ===== */
+    /* ===== MAIN TOOLBAR — aged paper, matching portfolio header ===== */
     ion-toolbar {
-      --background: var(--surveyor);
-      --color: var(--paper);
-      --border-color: var(--forest);
+      --background: rgba(244,236,216,0.96);
+      --color: var(--surveyor);
+      --border-color: rgba(61,53,40,0.18);
+      border-bottom: 1px solid rgba(61,53,40,0.18);
     }
     ion-title {
       font-family: var(--font-display);
       font-weight: 600;
       font-size: 19px;
       letter-spacing: 0.01em;
-      color: var(--paper);
+      color: var(--surveyor);
     }
 
     /* ===== SIDEBAR / LEFT MENU ===== */
@@ -82,8 +83,9 @@
       --ion-background-color: var(--paper-deep);
     }
     ion-menu ion-toolbar {
-      --background: var(--forest);
-      --color: var(--paper);
+      --background: var(--paper-deep);
+      --color: var(--surveyor);
+      border-bottom: 1px solid rgba(61,53,40,0.18);
     }
     ion-menu ion-title {
       font-family: var(--font-mono);
@@ -91,8 +93,7 @@
       font-weight: 500;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: var(--paper);
-      opacity: 0.85;
+      color: var(--ink-soft);
     }
     #filters { padding: 8px; }
 
@@ -215,18 +216,18 @@
     #viewer-header {
       display: flex; align-items: center; justify-content: space-between;
       height: 56px; min-height: 56px; padding: 0 8px 0 16px;
-      background: var(--forest);
-      border-bottom: 1px solid rgba(61,53,40,0.2);
+      background: var(--paper-deep);
+      border-bottom: 1px solid rgba(61,53,40,0.18);
       flex-shrink: 0;
     }
     #viewer-header ion-title {
       padding: 0;
       font-family: var(--font-display);
       font-size: 15px; font-weight: 600;
-      color: var(--paper); flex: 1;
+      color: var(--surveyor); flex: 1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    #viewer-header ion-button { --color: var(--paper); --color-hover: var(--route); }
+    #viewer-header ion-button { --color: var(--ink-soft); --color-hover: var(--route); }
 
     #viewer-body {
       flex: 1; overflow-y: auto; display: flex; flex-direction: column;
@@ -248,6 +249,10 @@
       font-size: 11px;
       border-top: 1px solid rgba(61,53,40,0.14);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #photo-meta-panel summary::-webkit-details-marker { display: none; }
+    #photo-meta-panel[open] summary {
+      border-bottom: 1px solid rgba(61,53,40,0.14);
     }
 
     /* ===== MINE PANEL ===== */
@@ -374,12 +379,14 @@
       --background: var(--paper-deep);
     }
     ion-modal#mineModal ion-toolbar {
-      --background: var(--forest);
-      --color: var(--paper);
+      --background: var(--paper-deep);
+      --color: var(--surveyor);
+      border-bottom: 1px solid rgba(61,53,40,0.18);
     }
     ion-modal#mineModal ion-title {
       font-family: var(--font-display);
       font-size: 16px; font-weight: 600;
+      color: var(--surveyor);
     }
     #mineModalContent {
       height: 100%; overflow-y: auto;
@@ -491,6 +498,21 @@
           </div>
         </div>
         <div id="viewer-meta"></div>
+        <!-- Photo metadata panel -->
+        <details id="photo-meta-panel" style="display:none;">
+          <summary style="
+            font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+            letter-spacing: 0.08em; text-transform: uppercase; color: var(--route);
+            padding: 10px 14px; cursor: pointer; list-style: none;
+            border-top: 1px solid rgba(61,53,40,0.14);
+            background: var(--paper-deep);
+            display: flex; align-items: center; gap: 6px;
+          ">
+            <ion-icon name="information-circle-outline" style="font-size:14px;"></ion-icon>
+            Image Details
+          </summary>
+          <div id="photo-meta-content" class="mine-panel-inner" style="padding: 12px 14px;"></div>
+        </details>
         <div id="mine-panel-desktop" style="display:none;">
           <div id="mine-loading-desktop" style="text-align:center;padding:40px;color:#888;">
             <ion-spinner name="crescent"></ion-spinner>
@@ -607,13 +629,36 @@
 
     const invisibleRenderer = {
       type: "simple",
-      symbol: { type: "simple-fill", color: [255,128,0,0], outline: { width: 1, color: "black" } }
+      symbol: { type: "simple-fill", color: [255,128,0,0], outline: { width: 0, color: [0,0,0,0] } }
     };
 
     const fpRenderer = {
       type: "simple",
       symbol: { type: "picture-marker", url: "marker_picture_black.svg", width: "25px", height: "25px" }
     };
+
+    // Viewshed: semi-transparent route-red fill, solid outline
+    const vsRenderer = {
+      type: "simple",
+      symbol: {
+        type: "simple-fill",
+        color: [199, 93, 58, 0.18],   // --route at 18% opacity
+        outline: { color: [199, 93, 58, 0.85], width: 1.5 }
+      }
+    };
+
+    // Building footprints: surveyor-green outline only, stands out over viewshed
+    const bldgRenderer = {
+      type: "simple",
+      symbol: {
+        type: "simple-fill",
+        color: [0, 0, 0, 0],
+        outline: { color: [26, 47, 35, 1], width: 2 }  // --surveyor, solid, 2px
+      }
+    };
+
+    // Scale threshold: ~zoom 10 boundary in Web Mercator
+    const OVERVIEW_SCALE = 144448;  // roughly zoom 10
 
     // --- Layers ---
     const indexLayer = new FeatureLayer({
@@ -625,12 +670,13 @@
       outFields: ["*"], renderer: invisibleRenderer, maxScale: 24, minScale: 0
     });
     const vsLayer = new FeatureLayer({
-      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Range_Viewsheds/FeatureServer/0",
-      outFields: ["*"], renderer: invisibleRenderer, maxScale: 24, minScale: 0
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeViewsheds_joined/FeatureServer/0",
+      outFields: ["*"], renderer: vsRenderer, maxScale: 24, minScale: 0
     });
     const fpLayer = new FeatureLayer({
-      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/VS_FOCAL_DEMO/FeatureServer/0",
-      outFields: ["*"], renderer: fpRenderer, maxScale: 24, minScale: 0, id: "fp"
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Atlas_FP_Joined/FeatureServer/0",
+      outFields: ["*"], renderer: fpRenderer,
+      minScale: OVERVIEW_SCALE, maxScale: 0, id: "fp"
     });
     const cdLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Range_City_Directory_Data/FeatureServer/0",
@@ -638,7 +684,7 @@
     });
     const bldgLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeBuildingFootprints/FeatureServer/0",
-      outFields: ["*"], maxScale: 24, minScale: 0, id: "bldg"
+      outFields: ["*"], renderer: bldgRenderer, maxScale: 24, minScale: 0, id: "bldg"
     });
     const minesLayer = new FeatureLayer({
       url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/IronRangeMinesLocations/FeatureServer/0",
@@ -650,12 +696,57 @@
       title: "{site_name}",
       content: [{ type: "text", text: `<a href="{url}" target="_blank">{url}</a>` }]
     };
+
+    // Iron Range boundaries — visible at overview zoom only, labels at all boundary-visible scales
+    const boundaryLayer = new FeatureLayer({
+      url: "https://services2.arcgis.com/RPhrOu9XQzI31xTa/arcgis/rest/services/Iron_Range_Boundaries/FeatureServer/0",
+      outFields: ["*"],
+      minScale: 0,                   // always on from zoom 0
+      maxScale: OVERVIEW_SCALE,      // disappears when fp icons appear
+      renderer: {
+        type: "simple",
+        symbol: {
+          type: "simple-fill",
+          color: [0, 0, 0, 0],
+          outline: {
+            type: "simple-line",
+            color: [199, 93, 58, 0.8],
+            width: 1.5,
+            style: "dash"
+          }
+        }
+      },
+      labelsVisible: true,
+      labelingInfo: [{
+        labelExpressionInfo: {
+          expression: `
+            var n = $feature.Name;
+            if (IsEmpty(n)) n = $feature.name;
+            if (IsEmpty(n)) n = $feature.NAME;
+            return n;
+          `
+        },
+        symbol: {
+          type: "text",
+          color: [26, 47, 35, 1],
+          haloColor: [244, 236, 216, 0.95],
+          haloSize: "2px",
+          font: { family: "JetBrains Mono", size: 11, weight: "bold" }
+        },
+        minScale: 0,
+        maxScale: OVERVIEW_SCALE
+      }],
+      popupEnabled: false,
+      id: "boundary"
+    });
+
     const markerLayer = new GraphicsLayer({ id: "markers" });
 
     // --- Map & View ---
+    // Layer order: indexLayer, boundaryLayer, [Sanborn at pos 2], markerLayer, fpLayer, vsLayer, bldgLayer, minesLayer
     const map = new Map({
       basemap: "satellite",
-      layers: [indexLayer, markerLayer, fpLayer, vsLayer, bldgLayer, minesLayer]
+      layers: [indexLayer, boundaryLayer, markerLayer, fpLayer, vsLayer, bldgLayer, minesLayer]
     });
     const view = new MapView({
       container: "viewDiv", map,
@@ -720,19 +811,37 @@
       return mobileOsdViewer;
     }
 
-    function openIIIFImage(imgId) {
+    function openIIIFImage(imgId, attrs) {
       const placeholder = document.getElementById("osd-placeholder");
       if (placeholder) placeholder.style.display = "none";
       const manifestUrl = `${IIIF_BASE}/${imgId}/info.json`;
       osdViewer.open(manifestUrl);
-      document.getElementById("viewer-title").innerText = imgId.replace(/\.[^/.]+$/, "");
+      // Title: prefer metadata Title, fall back to filename stem
+      const title = attrs?.Title || imgId.replace(/\.[^/.]+$/, "");
+      document.getElementById("viewer-title").innerText = title;
       document.getElementById("viewer-meta").innerText = manifestUrl;
+      // Populate collapsible metadata panel
+      const panel   = document.getElementById("photo-meta-panel");
+      const content = document.getElementById("photo-meta-content");
+      if (attrs) {
+        content.innerHTML = `
+          ${attrs.Title       ? `<h3>Title</h3><p><strong>${attrs.Title}</strong></p>` : ""}
+          ${attrs.Year        ? `<h3>Year</h3><p>${attrs.Year}</p>` : ""}
+          ${attrs.Description ? `<h3>Description</h3><p>${attrs.Description}</p>` : ""}
+          ${attrs.Source      ? `<h3>Source</h3><p>${attrs.Source}</p>` : ""}
+        `;
+        panel.style.display = "block";
+      } else {
+        panel.style.display = "none";
+      }
     }
 
-    function openMobileIIIFImage(imgId) {
+    function openMobileIIIFImage(imgId, attrs) {
       const manifestUrl = `${IIIF_BASE}/${imgId}/info.json`;
       getMobileOsd().open(manifestUrl);
-      document.getElementById("mobile-viewer-meta").innerText = manifestUrl;
+      const title = attrs?.Title || imgId.replace(/\.[^/.]+$/, "");
+      document.getElementById("mobile-viewer-meta").innerText =
+        [title, attrs?.Year, attrs?.Source].filter(Boolean).join(" · ");
     }
 
     // --- Desktop drawer ---
@@ -743,13 +852,14 @@
     function setDrawerMode(mode) {
       document.getElementById("osd-container").style.display         = mode === "photo" ? "block" : "none";
       document.getElementById("viewer-meta").style.display           = mode === "photo" ? "block" : "none";
+      document.getElementById("photo-meta-panel").style.display      = mode === "photo" ? "block" : "none";
       document.getElementById("mine-panel-desktop").style.display    = mode === "mine"  ? "block" : "none";
     }
 
-    async function openViewerDrawer(imgId) {
+    async function openViewerDrawer(imgId, attrs) {
       setDrawerMode("photo");
       openDrawer();
-      setTimeout(() => openIIIFImage(imgId), 300);
+      setTimeout(() => openIIIFImage(imgId, attrs), 300);
     }
 
     // --- Mobile sheet modal ---
@@ -798,9 +908,9 @@
       document.getElementById(`mob-tab-${tab}`).setAttribute("selected", "true");
     }
 
-    async function openMobilePhotoViewer(imgId) {
+    async function openMobilePhotoViewer(imgId, attrs) {
       await presentModal(photoModal);
-      setTimeout(() => openMobileIIIFImage(imgId), 400);
+      setTimeout(() => openMobileIIIFImage(imgId, attrs), 400);
     }
 
     sheetModal.addEventListener("ionModalDidDismiss", () => { sheetOpen = false; });
@@ -948,17 +1058,17 @@
       places: {
         layer: poiLayer, layerView: null,
         titleField: "Name", subtitleField: "Address",
-        searchFields: v => `(Upper(name) LIKE '%${v.toUpperCase()}%' OR Upper(Address) LIKE '%${v.toUpperCase()}%')`
+        searchFields: v => `(Upper(Name) LIKE '%${v.toUpperCase()}%' OR Upper(Address) LIKE '%${v.toUpperCase()}%')`
       },
       photos: {
         layer: vsLayer, layerView: null,
-        titleField: "img_id", subtitleField: "mapyear",
-        searchFields: v => `(Upper(img_id) LIKE '%${v.toUpperCase()}%')`
+        titleField: "Title", subtitleField: "Year",
+        searchFields: v => `(Upper(Title) LIKE '%${v.toUpperCase()}%' OR Upper(Description) LIKE '%${v.toUpperCase()}%' OR Upper(Source) LIKE '%${v.toUpperCase()}%' OR Upper(img_id) LIKE '%${v.toUpperCase()}%')`
       },
       people: {
         layer: cdLayer, layerView: null,
         titleField: "Name", subtitleField: "Occupation",
-        searchFields: v => `(Upper(fullname) LIKE '%${v.toUpperCase()}%' OR Upper(occupation) LIKE '%${v.toUpperCase()}%' OR Upper(address) LIKE '%${v.toUpperCase()}%')`
+        searchFields: v => `(Upper(Name) LIKE '%${v.toUpperCase()}%' OR Upper(Occupation) LIKE '%${v.toUpperCase()}%' OR Upper(Address) LIKE '%${v.toUpperCase()}%')`
       }
     };
 
@@ -978,15 +1088,30 @@
     let currentOverlayLayer = null;
     let activeSegment = "maps";
 
-    function buildWhereClause(cfg, searchVal) {
-      return searchVal?.trim() ? cfg.searchFields(searchVal.trim()) : "1=1";
+    function buildWhereClause(cfg, searchVal, segment) {
+      const clauses = [];
+      if (searchVal?.trim()) {
+        clauses.push(cfg.searchFields(searchVal.trim()));
+      } else if (segment === "maps") {
+        // Only apply zoom filter when zoom is a valid number
+        const z = Math.round(view.zoom);
+        if (!isNaN(z) && z > 0) {
+          clauses.push(`(minzoom IS NULL OR minzoom <= ${z})`);
+          clauses.push(`(maxzoom IS NULL OR maxzoom >= ${z})`);
+        }
+      }
+      return clauses.length ? clauses.join(" AND ") : "1=1";
     }
 
-    async function queryLayerInExtent(cfg, searchVal) {
+    async function queryLayerInExtent(cfg, searchVal, segment) {
       const q = cfg.layer.createQuery();
       q.returnGeometry = true;
-      q.geometry = view.extent;
-      q.where = buildWhereClause(cfg, searchVal);
+      q.outFields = ["*"];
+      q.where = buildWhereClause(cfg, searchVal, segment);
+      // Only restrict to map extent when NOT actively searching AND extent is valid
+      if (!searchVal?.trim() && view.extent) {
+        q.geometry = view.extent;
+      }
       return (await cfg.layer.queryFeatures(q)).features;
     }
 
@@ -1008,9 +1133,8 @@
         try {
           const q = cfg.layer.createQuery();
           q.geometry = view.extent;
-          q.where = buildWhereClause(cfg, searchVal);
+          q.where = buildWhereClause(cfg, searchVal, tab);
           const count = await cfg.layer.queryFeatureCount(q);
-          // Update both desktop and mobile badges
           const b1 = document.getElementById(`badge-${tab}`);
           const b2 = document.getElementById(`mob-badge-${tab}`);
           if (b1) b1.innerText = count;
@@ -1042,9 +1166,9 @@
           view.goTo({ center: feature.geometry.centroid ?? feature.geometry }, { duration: 400 });
         }
         if (isMobile()) {
-          await openMobilePhotoViewer(imgId);
+          await openMobilePhotoViewer(imgId, feature.attributes);
         } else {
-          openViewerDrawer(imgId);
+          openViewerDrawer(imgId, feature.attributes);
         }
       } else {
         const geom = feature.geometry.type === "polygon" ? feature.geometry.centroid : feature.geometry;
@@ -1060,14 +1184,17 @@
 
     // --- Build a result item element ---
     function buildResultItem(feature, segment) {
-      const cfg    = segmentConfig[segment];
-      const title  = feature.attributes[cfg.titleField]    ?? "(no title)";
-      const sub    = feature.attributes[cfg.subtitleField] ?? "";
-      const item   = document.createElement("ion-item");
+      const cfg   = segmentConfig[segment];
+      const title = feature.attributes[cfg.titleField] ?? "(no title)";
+      const sub   = feature.attributes[cfg.subtitleField] ?? "";
+      const item  = document.createElement("ion-item");
       if (segment === "people") {
         const addr = feature.attributes.Address ?? "";
         const yr   = feature.attributes.dirYear ?? "";
         item.innerHTML = `<ion-label><h2>${title}</h2><p>${sub}</p><p>${addr}</p><p>${yr}</p></ion-label>`;
+      } else if (segment === "photos") {
+        const source = feature.attributes.Source ?? "";
+        item.innerHTML = `<ion-label><h2>${title || feature.attributes.img_id}</h2><p>${sub}${source ? " · " + source : ""}</p></ion-label>`;
       } else {
         item.innerHTML = `<ion-label><h2>${title}</h2><p>${sub}</p></ion-label>`;
       }
@@ -1082,8 +1209,8 @@
       const resultBlock = document.getElementById("result-block");
       resultList.innerHTML = ""; resultBlock.innerText = "Results";
       let features = [];
-      try { features = await queryLayerInExtent(cfg, searchVal); }
-      catch(e) { resultBlock.innerText = "Results (unavailable)"; return; }
+      try { features = await queryLayerInExtent(cfg, searchVal, activeSegment); }
+      catch(e) { console.error("populateResults error:", e); resultBlock.innerText = "Results (unavailable)"; return; }
       features = sortFeatures(features, activeSegment);
       resultBlock.innerText = `Results (${features.length})`;
       if (cfg.layerView) {
@@ -1099,16 +1226,22 @@
       const resultBlock = document.getElementById("mobile-result-block");
       resultList.innerHTML = ""; resultBlock.innerText = "Results";
       let features = [];
-      try { features = await queryLayerInExtent(cfg, searchVal); }
-      catch(e) { resultBlock.innerText = "Results (unavailable)"; return; }
+      try { features = await queryLayerInExtent(cfg, searchVal, mobileActiveTab); }
+      catch(e) { console.error("populateMobileResults error:", e); resultBlock.innerText = "Results (unavailable)"; return; }
       features = sortFeatures(features, mobileActiveTab);
       resultBlock.innerText = `Results (${features.length})`;
       features.forEach(f => resultList.appendChild(buildResultItem(f, mobileActiveTab)));
     }
 
+    // --- Full refresh — updates BOTH desktop and mobile ---
     async function filterItems() {
       const searchVal = document.getElementById("searchBar").value || "";
-      await Promise.all([updateAllBadges(searchVal), populateResults(searchVal)]);
+      const mobileSearchVal = document.getElementById("mobileSearchBar").value || "";
+      await Promise.all([
+        updateAllBadges(searchVal || mobileSearchVal),
+        populateResults(searchVal),
+        ...(sheetOpen ? [populateMobileResults(mobileSearchVal)] : [])
+      ]);
     }
 
     // --- Sanborn overlay ---
@@ -1127,7 +1260,7 @@
           ? new WebTileLayer({ urlTemplate: serviceUrl })
           : new TileLayer({ url: serviceUrl });
         map.add(currentOverlayLayer);
-        map.reorder(currentOverlayLayer, 1);
+        map.reorder(currentOverlayLayer, 2); // above boundary, below feature layers
         currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
         
       } catch(e) { console.error("[Sanborn]", e); }
@@ -1141,7 +1274,7 @@
         ? new WebTileLayer({ urlTemplate: serviceUrl })
         : new TileLayer({ url: serviceUrl });
       map.add(currentOverlayLayer);
-      map.reorder(currentOverlayLayer, 1);
+      map.reorder(currentOverlayLayer, 2); // above boundary, below feature layers
       currentOverlayLayer.opacity = document.getElementById("slider").value / 100;
       
     }
@@ -1153,15 +1286,16 @@
       if (graphic.layer.id === "fp") {
         const imgId   = graphic.attributes.img_id;
         const mapcode = graphic.attributes.mapyear;
+        const attrs   = graphic.attributes;
         vsLayer.definitionExpression   = `img_id = '${imgId}'`;
         bldgLayer.definitionExpression = `img_id = '${imgId}'`;
         view.goTo({ center: graphic.geometry, zoom: 16 }, { duration: 600 });
         clearBldgHighlight();
         loadSanbornForMapcode(mapcode);
         if (isMobile()) {
-          await openMobilePhotoViewer(imgId);
+          await openMobilePhotoViewer(imgId, attrs);
         } else {
-          openViewerDrawer(imgId);
+          openViewerDrawer(imgId, attrs);
         }
       }
 
@@ -1169,12 +1303,20 @@
         const imgCoords = graphic.attributes.img_coords;
         if (!imgCoords) return;
         const imgId = graphic.attributes.img_id;
+        // Fetch metadata from vsLayer for the matching img_id
+        const metaQ = vsLayer.createQuery();
+        metaQ.where = `img_id = '${imgId}'`;
+        metaQ.outFields = ["Title","Year","Description","Source","img_id"];
+        metaQ.returnGeometry = false;
+        const metaRes = await vsLayer.queryFeatures(metaQ);
+        const attrs = metaRes.features.length ? metaRes.features[0].attributes : graphic.attributes;
+
         if (isMobile()) {
           const photoOpen = !photoModal.classList.contains("modal-dismissed");
           if (!photoOpen) {
             vsLayer.definitionExpression   = `img_id = '${imgId}'`;
             bldgLayer.definitionExpression = `img_id = '${imgId}'`;
-            await openMobilePhotoViewer(imgId);
+            await openMobilePhotoViewer(imgId, attrs);
             getMobileOsd().addOnceHandler("open", () => highlightBldgInOSD(imgCoords, getMobileOsd()));
           } else {
             highlightBldgInOSD(imgCoords, getMobileOsd());
@@ -1184,7 +1326,7 @@
           if (!isOpen) {
             vsLayer.definitionExpression   = `img_id = '${imgId}'`;
             bldgLayer.definitionExpression = `img_id = '${imgId}'`;
-            await openViewerDrawer(imgId);
+            await openViewerDrawer(imgId, attrs);
             osdViewer.addOnceHandler("open", () => highlightBldgInOSD(imgCoords));
           } else {
             highlightBldgInOSD(imgCoords);
@@ -1242,6 +1384,7 @@
       });
     });
 
+    // Refresh on map pan/zoom stop
     view.watch("stationary", isStationary => { if (isStationary) filterItems(); });
 
     // --- Initial load ---

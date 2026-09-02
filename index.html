@@ -333,8 +333,13 @@
       --background: var(--paper);
       --background-activated: var(--paper-deep);
       --color: var(--surveyor);
-      --box-shadow: 0 2px 8px rgba(26,47,35,0.18);
+      --box-shadow: 0 3px 12px rgba(26,47,35,0.22);
+      width: 52px;
+      height: 52px;
       border: 1px solid rgba(61,53,40,0.2);
+    }
+    ion-fab-button ion-icon {
+      font-size: 24px;
     }
     ion-fab-button.active {
       --background: var(--surveyor);
@@ -400,7 +405,10 @@
       #viewerDrawer { display: none !important; }
       #mobileTabBar { display: flex !important; }
       #gpsFab       { display: block !important; }
-      #viewDiv { height: calc(100% - 56px) !important; }
+      /* Account for header (56px) + slider overlay (44px) + tab bar (56px) */
+      #viewDiv { height: calc(100% - 56px - 44px) !important; margin-top: 44px; }
+      /* Hide ArcGIS zoom controls on mobile */
+      .esri-zoom { display: none !important; }
     }
   </style>
 </head>
@@ -411,8 +419,8 @@
   <ion-header>
     <ion-toolbar>
       <ion-title>
-        <img src="dmilogo.png" width="60" height="60" style="vertical-align:middle;">
-        &nbsp; UP Iron Atlas beta
+        <img src="ia_logo_alt.svg" width="60" height="60" style="vertical-align:middle;">
+        &nbsp; UP Iron Atlas
       </ion-title>
     </ion-toolbar>
   </ion-header>
@@ -527,15 +535,11 @@
     <ion-modal id="sheetModal">
       <div class="sheet-modal-content">
         <div class="sheet-modal-handle"></div>
-        <div class="sheet-search">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <ion-searchbar id="mobileSearchBar" placeholder="Search..." style="flex:1;"></ion-searchbar>
-            <ion-button fill="clear" color="medium" id="closeSheetBtn" style="flex-shrink:0;">
-              <ion-icon slot="icon-only" name="close-circle"></ion-icon>
-            </ion-button>
-          </div>
-          <div id="mobile-result-block" style="color:#aaa;font-size:13px;padding:0 4px 4px;">Results</div>
-        </div>
+        <div id="mobile-result-block" style="
+          font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+          letter-spacing: 0.08em; text-transform: uppercase;
+          color: var(--sage); padding: 4px 16px 6px;
+        ">Results</div>
         <div class="sheet-results">
           <ion-list id="mobile-result-list"></ion-list>
         </div>
@@ -604,7 +608,7 @@
 
   <!-- ===== GPS FAB (mobile only) ===== -->
   <div id="gpsFab">
-    <ion-fab-button id="gpsBtn" color="dark" size="small">
+    <ion-fab-button id="gpsBtn">
       <ion-icon id="gpsIcon" name="locate-outline"></ion-icon>
     </ion-fab-button>
   </div>
@@ -869,23 +873,18 @@
 
     // Breakpoints must be set as JS arrays — HTML attribute strings cause t.sort errors
     await sheetModal.componentOnReady();
-    sheetModal.breakpoints        = [0, 0.25, 0.5, 0.75, 1];
-    sheetModal.initialBreakpoint  = 0.5;
+    sheetModal.breakpoints        = [0, 0.35, 0.6, 1];
+    sheetModal.initialBreakpoint  = 0.35;
     sheetModal.backdropBreakpoint = 1;
-    sheetModal.handle             = false;
+    sheetModal.handle             = true;   // draggable handle
 
     await photoModal.componentOnReady();
-    photoModal.breakpoints        = [0, 0.25, 0.5, 0.75, 1];
+    photoModal.breakpoints        = [0, 0.35, 0.6, 1];
     photoModal.initialBreakpoint  = 0.5;
     photoModal.backdropBreakpoint = 1;
-    photoModal.handle             = false;
+    photoModal.handle             = true;   // draggable handle
 
     document.getElementById("closeMineModalBtn").addEventListener("click", () => mineModal.dismiss());
-    document.getElementById("closeSheetBtn").addEventListener("click", async () => {
-      await sheetModal.dismiss();
-      sheetOpen = false;
-      document.querySelectorAll("#mobileTabBar ion-tab-button").forEach(b => b.removeAttribute("selected"));
-    });
     document.getElementById("closePhotoModalBtn").addEventListener("click", () => photoModal.dismiss());
 
     let mobileActiveTab = "maps";
@@ -901,7 +900,7 @@
 
     async function openSheetWithTab(tab) {
       mobileActiveTab = tab;
-      await populateMobileResults(document.getElementById("mobileSearchBar").value || "");
+      await populateMobileResults("");
       await presentModal(sheetModal);
       sheetOpen = true;
       document.querySelectorAll("#mobileTabBar ion-tab-button").forEach(b => b.removeAttribute("selected"));
@@ -929,9 +928,6 @@
       });
     });
 
-    document.getElementById("mobileSearchBar").addEventListener("ionInput", () => {
-      populateMobileResults(document.getElementById("mobileSearchBar").value || "");
-    });
 
     // --- Building highlight (shared) ---
     const BLDG_DOT_ID = "bldg-highlight-dot";
@@ -1236,11 +1232,10 @@
     // --- Full refresh — updates BOTH desktop and mobile ---
     async function filterItems() {
       const searchVal = document.getElementById("searchBar").value || "";
-      const mobileSearchVal = document.getElementById("mobileSearchBar").value || "";
       await Promise.all([
-        updateAllBadges(searchVal || mobileSearchVal),
+        updateAllBadges(searchVal),
         populateResults(searchVal),
-        ...(sheetOpen ? [populateMobileResults(mobileSearchVal)] : [])
+        ...(sheetOpen ? [populateMobileResults("")] : [])
       ]);
     }
 

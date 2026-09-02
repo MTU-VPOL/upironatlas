@@ -46,6 +46,10 @@
       --radius: 3px;
     }
 
+     .esri-ui .esri-popup  {
+      display:  none !important;
+    }  
+
     /* ===== BASE ===== */
     html, body, ion-app, ion-content, ion-split-pane, ion-menu, #viewDiv {
       height: 100%; width: 100%; margin: 0; padding: 0;
@@ -227,7 +231,7 @@
       color: var(--surveyor); flex: 1;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
-    #viewer-header ion-button { --color: var(--ink-soft); --color-hover: var(--route); }
+    #viewer-header ion-button { --color: var(--ink); --color-hover: var(--route); }
 
     #viewer-body {
       flex: 1; overflow-y: auto; display: flex; flex-direction: column;
@@ -378,7 +382,162 @@
       --box-shadow: 0 -4px 24px rgba(26,47,35,0.14);
     }
 
-    /* ===== MINE MODAL ===== */
+    /* ===== WELCOME / INTRO MODAL ===== */
+    ion-modal#welcomeModal {
+      --background: var(--paper);
+      --border-radius: var(--radius);
+    }
+    #welcome-body {
+      height: 100%;
+      overflow-y: auto;
+      background: var(--paper);
+      font-family: var(--font-body);
+      color: var(--ink);
+    }
+    #welcome-body .w-header {
+      background: var(--surveyor);
+      padding: 28px 24px;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      border-bottom: 3px solid var(--route);
+    }
+    #welcome-body .w-header img {
+      height: 80px;
+      width: auto;
+    }
+    #welcome-body .w-close-row {
+      display: flex;
+      justify-content: flex-end;
+      padding: 8px 12px 0;
+      background: var(--surveyor);
+    }
+    #welcome-body .w-close-row ion-button {
+      --color: var(--paper);
+      --color-hover: var(--route);
+    }
+    #welcome-body .w-content {
+      padding: 28px 32px 40px;
+      max-width: 780px;
+      margin: 0 auto;
+    }
+    #welcome-body h1.w-title {
+      font-family: var(--font-display);
+      font-size: clamp(22px, 3vw, 30px);
+      font-weight: 700;
+      color: var(--surveyor);
+      margin: 0 0 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(61,53,40,0.18);
+      line-height: 1.15;
+    }
+    #welcome-body h2.w-section {
+      font-family: var(--font-display);
+      font-size: clamp(17px, 2.2vw, 21px);
+      font-weight: 600;
+      color: var(--surveyor);
+      margin: 32px 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(61,53,40,0.18);
+    }
+    #welcome-body h3.w-sub {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--route);
+      margin: 24px 0 10px;
+    }
+    #welcome-body p.w-body {
+      font-size: 15px;
+      color: var(--ink-soft);
+      line-height: 1.7;
+      margin: 0 0 14px;
+      max-width: 72ch;
+    }
+    #welcome-body .w-team {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 8px;
+    }
+    #welcome-body .w-team li {
+      font-size: 14.5px;
+      color: var(--ink-soft);
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(61,53,40,0.1);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    #welcome-body .w-team li strong {
+      color: var(--ink);
+      font-weight: 600;
+    }
+    #welcome-body .w-team li span {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--sage);
+      letter-spacing: 0.04em;
+    }
+    #welcome-body .w-feature {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin: 0 0 24px;
+      padding: 16px;
+      background: var(--paper-deep);
+      border: 1px solid rgba(61,53,40,0.14);
+      border-radius: var(--radius);
+      border-left: 3px solid var(--route);
+    }
+    #welcome-body .w-feature img {
+      width: 100%;
+      height: auto;
+      border-radius: var(--radius);
+      border: 1px solid rgba(61,53,40,0.18);
+      object-fit: contain;
+      box-shadow: 0 2px 8px rgba(26,47,35,0.1);
+    }
+    #welcome-body .w-feature p {
+      font-size: 14px;
+      color: var(--ink-soft);
+      line-height: 1.65;
+      margin: 0;
+    }
+    #welcome-body .w-footer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 24px;
+      padding: 32px 24px;
+      border-top: 1px solid rgba(61,53,40,0.18);
+      background: var(--paper-deep);
+    }
+    #welcome-body .w-footer img {
+      height: 60px;
+      width: auto;
+      opacity: 0.85;
+    }
+    #welcome-body .w-enter-btn {
+      --background: var(--surveyor);
+      --background-activated: var(--forest);
+      --color: var(--paper);
+      --border-radius: var(--radius);
+      --padding-top: 14px;
+      --padding-bottom: 14px;
+      --padding-start: 40px;
+      --padding-end: 40px;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    @media (max-width: 600px) {
+      #welcome-body .w-content { padding: 20px 18px 32px; }
+    }
     ion-modal#mineModal {
       --border-radius: var(--radius);
       --background: var(--paper-deep);
@@ -419,8 +578,8 @@
   <ion-header>
     <ion-toolbar>
       <ion-title>
-        <img src="dmilogo.png" width="60" height="60" style="vertical-align:middle;">
-        &nbsp; UP Iron Atlas beta
+        <img src="ia_logo_alt.svg" width="60" height="60" style="vertical-align:middle;">
+        &nbsp; UP Iron Atlas
       </ion-title>
     </ion-toolbar>
   </ion-header>
@@ -494,7 +653,7 @@
     <div id="viewerDrawer">
       <div id="viewer-header">
         <ion-title id="viewer-title">Photo Viewer</ion-title>
-        <ion-button fill="clear" id="closeViewerBtn" color="light">
+        <ion-button fill="clear" id="closeViewerBtn">
           <ion-icon slot="icon-only" name="close"></ion-icon>
         </ion-button>
       </div>
@@ -550,6 +709,69 @@
       <div style="display:flex;flex-direction:column;height:100%;background:#111;">
         <div id="mobileOsdContainer" style="flex:1;min-height:200px;"></div>
         <div id="mobile-viewer-meta" style="padding:8px 12px;background:#1a1a1a;color:#ccc;font-size:12px;border-top:1px solid #333;"></div>
+      </div>
+    </ion-modal>
+
+    <!-- ===== WELCOME / INTRO MODAL ===== -->
+    <ion-modal id="welcomeModal">
+      <div id="welcome-body">
+        <div class="w-close-row">
+          <ion-button fill="clear" id="closeWelcomeBtn">
+            <ion-icon slot="icon-only" name="close"></ion-icon>
+          </ion-button>
+        </div>
+        <div class="w-header">
+          <img src="ia_logo_alt.svg" alt="UP Iron Atlas">
+          <span style="font-family:var(--font-display);font-size:clamp(20px,3vw,28px);font-weight:700;color:var(--paper);letter-spacing:0.01em;">UP Iron Atlas</span>
+        </div>
+        <div class="w-content">
+          <h1 class="w-title">About the Application</h1>
+          <p class="w-body">The UP Iron Atlas is a web application dedicated to exploring the historical heritage of iron mining in the Upper Peninsula of Michigan. Through a combination of interactive maps, and curated historical content, users can embark on a journey through the region's rich iron mining history. The application offers access to archival maps, GIS data, city directory records, and compelling narratives that highlight the significant role of iron mining in shaping the landscape and communities of the Upper Peninsula.</p>
+          <p class="w-body">Users can delve into the intricacies of iron mining operations, examine the change of iron mining sites over time, and uncover fascinating stories of the people who lived and worked in these areas. Whether for educational purposes, historical research, or sheer curiosity, the UP Iron Atlas provides an immersive and informative experience into the captivating world of iron mining history.</p>
+
+          <h3 class="w-sub">Project Team</h3>
+          <ul class="w-team">
+            <li><strong>Bob Cowling</strong><span>GIS Librarian — Project Director</span></li>
+            <li><strong>Isaiah Washington</strong><span>M.S. Student, Social Sciences — Library GIS Assistant</span></li>
+            <li><strong>Yamini Sree Manchala</strong><span>M.S. Student, Forestry — Library GIS Assistant</span></li>
+            <li><strong>Genius Amaraizu</strong><span>M.S. Student, Humanities — Graduate GIS Assistant</span></li>
+          </ul>
+
+          <h2 class="w-section">Using the Application on Desktop</h2>
+          <div class="w-feature">
+            <img src="zoom.png" alt="Zoom controls">
+            <p>Use the zoom controls to zoom in and out of the map. The maps list on the right sidebar will update with maps corresponding to that area. Click on any map on the list to view it in the map interface. You can also view Places, Photos, or People at the location corresponding to the area in which you are viewing on the map.</p>
+          </div>
+          <div class="w-feature">
+            <img src="opacity.png" alt="Opacity slider">
+            <p>Use the opacity slider to change the opacity of the overlay map to compare changes from the historical map overlay with the modern basemap.</p>
+          </div>
+          <div class="w-feature">
+            <img src="search.png" alt="Search bar">
+            <p>Use the search bar to search for maps, places, photos, or people. The Results list will update.</p>
+          </div>
+          <div class="w-feature">
+            <img src="photo.png" alt="Camera icons">
+            <p>Click on any of the camera icons to view a picture of that location. You also get a viewshed that shows the approximate viewing area that is shown in each picture.</p>
+          </div>
+          <div class="w-feature">
+            <img src="footprint.png" alt="Building footprints">
+            <p>Some photo viewsheds have building footprints associated with them (outlined in black). Click on any of the footprints to view the corresponding building in the photograph, highlighted with a red dot in the picture.</p>
+          </div>
+
+          <h2 class="w-section">Using the Application on Mobile</h2>
+          <div class="w-feature">
+            <img src="mobile.png" alt="Mobile app">
+            <p>The mobile application and the desktop application generally share the same features and functionality. The mobile version lacks search capabilities but adds a GPS button where you can zoom to and track your current location on the map as you are viewing the historical landscape.</p>
+          </div>
+        </div>
+
+        <div class="w-footer">
+          <img src="vpollogo.png" alt="Van Pelt and Opie Library">
+          <ion-button class="w-enter-btn" id="enterAtlasBtn">
+            Enter the Atlas
+          </ion-button>
+        </div>
       </div>
     </ion-modal>
 
@@ -1145,7 +1367,8 @@
       if (segment === "maps") {
         loadMapOverlay(feature);
       } else if (segment === "photos") {
-        const imgId   = feature.attributes.img_id;
+        const rawId = feature.attributes.img_id ?? "";
+        const imgId = rawId.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
         const mapcode = feature.attributes.mapyear;
         vsLayer.definitionExpression   = `img_id = '${imgId}'`;
         bldgLayer.definitionExpression = `img_id = '${imgId}'`;
@@ -1280,9 +1503,34 @@
       if (!graphic?.layer) return;
 
       if (graphic.layer.id === "fp") {
-        const imgId   = graphic.attributes.img_id;
+        // Sanitize img_id — strip zero-width spaces and trim whitespace
+        const rawId = graphic.attributes.img_id ?? "";
+        const imgId = rawId.replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
         const mapcode = graphic.attributes.mapyear;
         const attrs   = graphic.attributes;
+
+        console.log("[fp click] raw img_id:", JSON.stringify(rawId));
+        console.log("[fp click] sanitized img_id:", JSON.stringify(imgId));
+
+        // Verify vsLayer has a matching record before setting definition expression
+        const vsCheck = vsLayer.createQuery();
+        vsCheck.where = `img_id = '${imgId}'`;
+        vsCheck.returnGeometry = false;
+        vsCheck.outFields = ["img_id"];
+        const vsResult = await vsLayer.queryFeatures(vsCheck);
+        console.log(`[fp click] vsLayer match count for '${imgId}':`, vsResult.features.length);
+
+        if (vsResult.features.length === 0) {
+          // Try trimmed version of what vsLayer actually has — log a sample
+          const sample = vsLayer.createQuery();
+          sample.where = `Upper(img_id) LIKE '%${imgId.split(".")[0].toUpperCase().slice(0,20)}%'`;
+          sample.returnGeometry = false;
+          sample.outFields = ["img_id"];
+          sample.num = 3;
+          const sampleRes = await vsLayer.queryFeatures(sample);
+          console.warn("[fp click] No exact match. Fuzzy matches:", sampleRes.features.map(f => JSON.stringify(f.attributes.img_id)));
+        }
+
         vsLayer.definitionExpression   = `img_id = '${imgId}'`;
         bldgLayer.definitionExpression = `img_id = '${imgId}'`;
         view.goTo({ center: graphic.geometry, zoom: 16 }, { duration: 600 });
@@ -1383,10 +1631,31 @@
     // Refresh on map pan/zoom stop
     view.watch("stationary", isStationary => { if (isStationary) filterItems(); });
 
+    // --- Welcome modal ---
+    const welcomeModal = document.getElementById("welcomeModal");
+    await welcomeModal.componentOnReady();
+
+    function dismissWelcome() {
+      localStorage.setItem("ironAtlasIntroSeen", "1");
+      welcomeModal.dismiss();
+    }
+
+    document.getElementById("closeWelcomeBtn").addEventListener("click", dismissWelcome);
+    document.getElementById("enterAtlasBtn").addEventListener("click", dismissWelcome);
+
     // --- Initial load ---
     await view.when();
     await indexLayer.when();
     filterItems();
+
+    // Show welcome modal if not previously dismissed
+    if (!localStorage.getItem("ironAtlasIntroSeen")) {
+      try {
+        await welcomeModal.present();
+      } catch(e) {
+        console.error("Welcome modal failed to present:", e);
+      }
+    }
 
   })());
 </script>

@@ -875,10 +875,16 @@
     sheetModal.handle             = true;
 
     await photoModal.componentOnReady();
-    photoModal.breakpoints        = [0, 0.35, 0.6, 1];
-    photoModal.initialBreakpoint  = 0.6;
+    photoModal.breakpoints        = [0, 0.85, 1];
+    photoModal.initialBreakpoint  = 0.85;
     photoModal.backdropBreakpoint = 1;
     photoModal.handle             = true;
+
+    // Prevent OSD touch/pointer events from bubbling to Ionic's sheet drag handler
+    const osdContainer = document.getElementById("mobileOsdContainer");
+    ["touchstart", "touchmove", "touchend", "pointerdown", "pointermove", "pointerup"].forEach(evt => {
+      osdContainer.addEventListener(evt, e => e.stopPropagation(), { passive: false });
+    });
 
     document.getElementById("closeMineModalBtn").addEventListener("click", () => mineModal.dismiss());
 
